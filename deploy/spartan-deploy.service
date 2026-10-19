@@ -1,0 +1,8 @@
+[Unit]
+Description=Pull Spartan Signs from GitHub and reload nginx if changed
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/spartan-signs/deploy.sh

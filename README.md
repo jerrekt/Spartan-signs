@@ -32,6 +32,16 @@ nginx -t && systemctl reload nginx
 
 ## Updating
 
+Automatic: a systemd timer checks GitHub every minute and deploys anything new.
+
+One-time install (in the LXC):
+
 ```bash
-/var/www/spartan-signs/deploy.sh
+ln -sf /var/www/spartan-signs/deploy/spartan-deploy.service /etc/systemd/system/
+ln -sf /var/www/spartan-signs/deploy/spartan-deploy.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now spartan-deploy.timer
 ```
+
+Manual deploy: `/var/www/spartan-signs/deploy.sh`
+Deploy log: `journalctl -u spartan-deploy --no-pager | tail`
