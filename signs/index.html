@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px/1.5 system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Spartan Sign Control</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+/* Layout: control-room console. Fleet rail on the left, one sign's controls on the right; stacks on phones. */
+:root{
+  --bg:#eef1f7; --surface:#ffffff; --sunk:#e4e9f2; --fg:#101a30; --muted:#5b6782; --line:#d5dcea;
+  --blue:#0055a2; --gold:#d9991a; --on-accent:#ffffff;
+  --good:#1f8a4c; --warn:#b7700b; --bad:#b33a3a; --unlit:#c9d0dd;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0a0f1c; --surface:#121a2c; --sunk:#0d1424; --fg:#e6ebf6; --muted:#8e99b4; --line:#24304a;
+  --blue:#4b8ee0; --gold:#f0b83a; --on-accent:#0a0f1c;
+  --good:#4cc283; --warn:#e6a23a; --bad:#e36a6a; --unlit:#2a3550; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0a0f1c; --surface:#121a2c; --sunk:#0d1424; --fg:#e6ebf6; --muted:#8e99b4; --line:#24304a;
+  --blue:#4b8ee0; --gold:#f0b83a; --on-accent:#0a0f1c;
+  --good:#4cc283; --warn:#e6a23a; --bad:#e36a6a; --unlit:#2a3550; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:18px}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:30px;line-height:1.05}
+h2{font-size:22px}
+h3{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.mono{font-family:var(--mono);font-size:12.5px;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.brandrow{display:flex;align-items:center;gap:14px}
+.smelogo{height:56px;width:auto;max-width:100%;background:#fff;border-radius:10px;padding:6px 10px;border:1px solid var(--line)}
+.brand small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold)}
+.clock{text-align:right}
+.clock .t{font-family:var(--display);font-size:28px;line-height:1;font-variant-numeric:tabular-nums}
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--good);display:inline-block}
+.demo{font-size:12px;color:var(--muted);background:var(--sunk);border:1px dashed var(--line);border-radius:8px;padding:8px 12px}
+
+/* main grid */
+.main{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:minmax(0,1fr)}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:14px;min-width:0}
+.fleet-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.fleet-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:7px 12px;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--blue)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:var(--on-accent)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#1b1404}
+
+.list{display:grid;gap:8px}
+.sign{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:12px;align-items:center;
+  padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--surface);text-align:left;width:100%}
+.sign:hover{border-color:var(--muted)}
+.sign[aria-current="true"]{border-color:var(--blue);box-shadow:inset 3px 0 0 var(--blue)}
+.sign .nm{font-weight:600;line-height:1.25}
+.sign .sub{font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pill{font-family:var(--mono);font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:999px;border:1px solid currentColor;white-space:nowrap}
+.pill.on{color:var(--good)} .pill.off{color:var(--muted)} .pill.offline{color:var(--bad)} .pill.fade{color:var(--warn)}
+
+/* switch */
+.switch{position:relative;width:46px;height:26px;border-radius:999px;background:var(--unlit);border:none;flex:none;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.switch[aria-checked="true"]{background:var(--good)}
+.switch[aria-checked="true"]::after{transform:translateX(20px)}
+.switch:disabled{opacity:.4;cursor:not-allowed}
+
+/* badge */
+.badge{display:block;width:100%;height:auto;overflow:visible;transition:filter .3s}
+.badge use{transition:fill .5s}.badge .lit{transition:opacity .4s}
+.breathe .lit{animation:breathe 3.2s ease-in-out infinite}
+@keyframes breathe{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.breathe .lit{animation:none}.badge use,.badge .lit{transition:none}}
+
+/* detail */
+.d-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.d-head .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.power{display:flex;align-items:center;gap:10px;font-weight:600}
+.stage{display:grid;grid-template-columns:minmax(0,220px) minmax(0,1fr);gap:20px;align-items:center}
+@media (max-width:560px){.stage{grid-template-columns:minmax(0,1fr)}.stage .pv{max-width:220px;margin:0 auto}}
+.pv{background:var(--sunk);border-radius:12px;padding:18px;position:relative}
+.pv .cap{position:absolute;left:10px;bottom:8px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.ctrl{display:grid;gap:14px;min-width:0}
+.field{display:grid;gap:6px;min-width:0}
+.field label,.lbl{font-size:13px;font-weight:600}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+input[type=range]{width:100%;accent-color:var(--blue)}
+.val{font-family:var(--mono);font-size:12.5px;min-width:52px;text-align:right}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:none;background:transparent;padding:6px 12px;font-size:13.5px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--blue);color:var(--on-accent)}
+.sec{border-top:1px solid var(--line);padding-top:14px;display:grid;gap:12px}
+
+.zones{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:480px){.zones{grid-template-columns:minmax(0,1fr)}}
+.zone{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.zone input[type=color]{width:34px;height:34px;border:none;padding:0;background:none;border-radius:6px;cursor:pointer}
+.zone .zn{font-weight:600;font-size:13.5px;line-height:1.2}
+.presets{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 10px 4px 6px;font-size:13px;background:var(--surface)}
+.chip i{display:inline-flex}
+.chip i b{width:10px;height:14px;display:block}
+.chip i b:first-child{border-radius:7px 0 0 7px}.chip i b:last-child{border-radius:0 7px 7px 0}
+
+.sched-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:620px){.sched-grid{grid-template-columns:minmax(0,1fr)}}
+input[type=time],select,input[type=text],input[type=password],input[type=email],textarea{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 9px;width:100%;min-width:0}
+.summary{font-size:14px;background:var(--sunk);border-radius:8px;padding:10px 12px}
+.summary strong{font-variant-numeric:tabular-nums}
+
+.tl{position:relative;height:30px;border-radius:6px;background:var(--sunk);overflow:hidden;border:1px solid var(--line)}
+.tl .seg-on,.tl .seg-fade{position:absolute;top:0;bottom:0}
+.tl .seg-on{background:var(--gold)}
+.tl .seg-fade{background:linear-gradient(90deg,var(--gold),transparent)}
+.tl .now{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--blue)}
+.tl .ss{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--muted)}
+.ticks{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+
+.conn{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start}
+@media (max-width:560px){.conn{grid-template-columns:minmax(0,1fr)}}
+dl.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;margin:0;font-size:14px}
+dl.kv dt{color:var(--muted)} dl.kv dd{margin:0;overflow-wrap:anywhere}
+.qr{background:#fff;padding:8px;border-radius:8px;width:136px;height:136px;display:grid;place-items:center}
+.qr img,.qr canvas{width:120px!important;height:120px!important}
+.qrbox{display:grid;gap:6px;justify-items:center;text-align:center;font-size:12px;color:var(--muted)}
+.wifiform{display:grid;gap:10px;border:1px dashed var(--line);border-radius:10px;padding:12px}
+.addp{border:1px solid var(--blue);border-radius:10px;padding:12px;display:grid;gap:12px;background:var(--surface)}
+.addp .steps{display:flex;gap:6px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.addp .steps [aria-current="step"]{color:var(--blue);font-weight:600}
+.opt{display:grid;gap:2px;text-align:left;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);width:100%}
+.opt:hover,.opt[aria-pressed="true"]{border-color:var(--blue)}
+.opt b{font-weight:600}.opt span{font-size:13px;color:var(--muted)}
+.err{font-size:13px;color:var(--bad)}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-2px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.btn.danger{color:var(--bad);border-color:currentColor}
+.confirm{border:1px solid var(--bad);border-radius:10px;padding:12px;display:grid;gap:10px;font-size:14px}
+.empty{display:grid;gap:10px;justify-items:start;padding:20px 4px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.acct{display:grid;gap:4px}
+.acct label{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.acct select{width:auto;min-width:190px}
+.pill.role{color:var(--blue)} .pill.master{color:var(--gold)}
+.people{display:flex;flex-wrap:wrap;gap:6px}
+.person{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px 2px 2px 10px;font-size:13px}
+.person button{border:none;background:none;color:var(--muted);font-size:12px;font-weight:600;line-height:1;padding:4px 8px;border-radius:999px}
+.person button:hover{color:var(--bad)}
+textarea{resize:vertical;min-height:72px}
+.tix{display:grid;gap:8px}
+.tix-row{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:0 8px 8px 0;padding:8px 10px;font-size:14px}
+.tix-row > div{min-width:0;overflow-wrap:anywhere}
+:root{--dc-bg:#313338;--dc-embed:#2b2d31;--dc-fg:#dbdee1;--dc-muted:#949ba4;--dc-head:#f2f3f5;--dc-tag:#5865f2}
+.dc{background:var(--dc-bg);color:var(--dc-fg);border-radius:10px;padding:12px;display:grid;gap:8px;font-size:14px}
+.dc-cap{font-size:12px;color:var(--muted)}
+.dc-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dc-head b{color:var(--dc-head)}
+.dc-ava{width:28px;height:28px;border-radius:50%;background:var(--dc-tag);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700}
+.dc-tag{background:var(--dc-tag);color:#fff;font-size:10px;font-weight:700;padding:1px 4px;border-radius:3px}
+.dc-embed{background:var(--dc-embed);border-left:4px solid #f0b83a;border-radius:4px;padding:10px 12px;display:grid;gap:6px;overflow-wrap:anywhere}
+.dc-embed b{color:var(--dc-head)} .dc-embed p{margin:0}
+.dc-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px}
+.dc-fields span{display:block;font-size:12px;font-weight:700;color:var(--dc-head)}
+.dc-muted{color:var(--dc-muted);font-size:12px}
+.gate{max-width:440px;margin:12px auto 0;width:100%}
+.gate-in{display:grid;gap:14px}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 14px;font-size:15px}
+.gl{display:grid;gap:6px}
+.gacct{display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface);width:100%}
+.gacct:hover{border-color:var(--blue)}
+.gav{width:30px;height:30px;border-radius:50%;background:var(--blue);color:var(--on-accent);display:grid;place-items:center;font-weight:600;font-size:13px;flex:none}
+.gacct small{display:block;color:var(--muted);font-size:12.5px}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;font-weight:600;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand brandrow">
+      <img class="smelogo" src="data:image/png;base64,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" alt="SME SJSU">
+      <div><small>Smart LED sign</small><h1>Spartan Sign Control</h1></div>
+    </div>
+    <div class="acct" id="acctBox" hidden>
+      <label for="who">Signed in as</label>
+      <div class="row"><select id="who"></select><span class="pill" id="whoRole"></span><button class="btn" id="signOut" style="padding:4px 10px;font-size:13px">Sign out</button></div>
+    </div>
+    <div class="clock">
+      <div class="t" id="clock">--:--</div>
+      <div class="sync"><span class="dot"></span><span>Time synced · pool.ntp.org · Pacific</span></div>
+    </div>
+  </header>
+
+  <p class="demo">Clickable demo with example signs. Nothing here talks to real hardware yet. On the real build, each control maps to a WLED setting on the sign's ESP32-C6. Switch <b>Signed in as</b> to see what the master, an owner and a shared user each see.</p>
+
+  <section class="panel gate" id="gate" aria-label="Sign in">
+    <div class="gate-in">
+      <h2>Sign in</h2>
+      <p class="muted" style="margin:0">Control your signs, or claim a new one with the code on its sticker.</p>
+      <button class="btn gbtn" id="gBtn">Continue with Google</button>
+      <div id="gPick" class="gl" hidden>
+        <span class="lbl">Choose an account (demo)</span>
+        <div id="gList" class="gl"></div>
+      </div>
+      <div class="or"><span>or</span></div>
+      <form id="mForm" class="field" novalidate>
+        <label for="mLink">Email me a sign-in link</label>
+        <div class="row"><input type="email" id="mLink" placeholder="name@example.com" style="flex:1;min-width:180px"><button class="btn primary" type="submit">Send link</button></div>
+        <span class="err" id="gErr" role="alert" hidden></span>
+      </form>
+      <p class="muted" style="margin:0;font-size:12.5px">Demo only. On the real site, Google sign-in opens Google's own page, and the email link arrives in your inbox. A new email creates a new account.</p>
+    </div>
+  </section>
+
+  <div class="main" id="app" hidden>
+    <section class="panel" aria-label="All signs">
+      <div class="fleet-head">
+        <div><h2 id="fleetTitle">All signs</h2><span class="muted mono" id="fleetStat"></span></div>
+        <button class="btn primary" id="addBtn">+ Add sign</button>
+      </div>
+      <div class="addp" id="addPanel" hidden></div>
+      <div class="fleet-actions">
+        <button class="btn" id="allOn">All on</button>
+        <button class="btn" id="allOff">All off</button>
+        <button class="btn gold" id="allGame">Game day, all</button>
+      </div>
+      <div class="list" id="list"></div>
+      <div id="tickets"></div>
+    </section>
+
+    <section class="panel" id="detail" aria-label="Sign controls"></section>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><path id="lz-white" fill-rule="evenodd" d="M107.83 241.1 L105.39 240.91 L103.15 239.43 L101.81 237.22 L101.59 234.37 L114.87 181.29 L115.51 176.61 L114.95 175.23 L113.73 174.8 L106.0 177.15 L104.37 177.27 L102.95 176.95 L101.18 175.8 L99.97 174.17 L99.46 172.34 L99.6 170.31 L101.79 163.19 L107.03 148.75 L117.62 123.53 L123.98 110.71 L127.56 105.58 L133.09 99.12 L133.82 97.69 L133.97 96.27 L133.61 95.05 L132.65 93.63 L125.07 85.69 L121.12 81.02 L119.63 80.46 L115.76 80.41 L113.32 79.44 L91.15 65.31 L87.23 62.51 L84.98 60.27 L83.96 58.44 L83.88 56.61 L84.68 54.78 L91.26 47.46 L100.36 38.92 L110.88 30.46 L120.03 24.71 L127.36 20.92 L134.07 18.66 L140.78 15.6 L150.75 12.88 L160.71 10.99 L164.17 10.71 L169.25 11.25 L174.75 9.84 L178.81 9.59 L189.59 10.53 L198.14 11.92 L204.44 14.1 L208.92 14.63 L211.56 15.26 L222.34 19.16 L231.29 23.26 L237.39 27.1 L242.35 29.76 L253.66 38.3 L259.15 43.2 L264.44 48.42 L273.8 59.52 L277.91 65.15 L281.73 71.05 L289.75 85.9 L292.64 93.42 L294.75 100.3 L296.27 106.64 L296.86 110.31 L297.03 115.39 L298.47 121.49 L299.13 131.25 L298.9 140.61 L298.41 144.47 L297.16 149.15 L296.8 155.46 L295.25 161.97 L291.42 173.56 L287.6 181.49 L285.58 186.37 L280.93 194.51 L276.56 200.81 L274.2 203.42 L272.37 204.73 L270.75 205.13 L268.92 204.64 L266.07 202.35 L251.42 187.62 L248.58 185.38 L247.76 185.08 L247.45 185.36 L248.22 187.59 L251.02 192.27 L266.73 214.85 L267.6 217.49 L266.97 219.73 L266.07 220.77 L264.85 221.56 L263.42 221.95 L262.0 221.93 L248.78 218.3 L239.83 216.17 L232.51 214.77 L221.53 213.3 L206.07 212.35 L204.03 211.53 L202.2 210.13 L200.07 207.73 L197.04 203.05 L196.1 202.26 L195.08 202.02 L194.27 202.3 L193.43 203.05 L190.0 208.31 L187.4 211.39 L184.76 213.83 L182.47 215.2 L166.2 219.77 L156.25 222.98 L139.36 229.0 L110.68 240.25Z M185.32 48.72 L184.69 48.68 L184.1 47.89 L172.03 17.97 L171.35 15.73 L171.58 15.12 L172.1 14.76 L175.36 14.43 L180.03 14.41 L190.0 15.09 L200.78 16.87 L201.59 17.19 L202.05 17.76 L202.08 18.58 L201.74 19.39 L186.34 47.48Z M159.49 49.93 L158.22 49.08 L137.38 23.86 L136.52 22.44 L136.92 21.52 L142.81 19.37 L152.58 16.88 L162.95 15.09 L165.8 14.99 L166.61 15.39 L166.84 16.34 L166.22 19.8 L160.53 48.47 L160.1 49.55Z M210.14 54.59 L209.29 54.37 L208.82 52.95 L206.2 21.22 L206.29 19.19 L206.68 18.69 L207.29 18.51 L215.63 21.04 L225.59 24.94 L232.92 28.51 L234.54 29.59 L235.03 30.37 L234.76 31.19 L233.42 32.61Z M135.29 59.09 L134.47 58.84 L132.44 57.41 L114.54 44.24 L107.96 39.32 L107.24 38.31 L107.72 37.29 L112.1 34.0 L118.65 29.97 L125.73 26.09 L131.83 23.64 L132.5 23.86 L132.89 24.68 L133.71 32.61 L135.97 57.83 L135.88 58.64Z M232.31 68.03 L231.08 68.04 L230.87 66.98 L238.07 34.64 L238.63 33.02 L239.02 32.63 L239.63 32.55 L242.47 34.18 L252.05 41.36 L260.27 48.68 L262.61 51.3 L262.88 52.14 L262.54 52.75 L261.8 53.23Z M116.78 76.83 L115.36 76.38 L99.49 66.23 L88.32 59.05 L87.16 57.83 L87.19 57.02 L87.67 56.2 L93.59 49.61 L97.86 45.56 L102.95 41.29 L103.56 41.17 L104.17 41.46 L105.25 43.8 L116.72 74.51 L117.18 76.14Z M248.37 86.72 L247.56 86.65 L247.08 86.31 L246.99 85.69 L247.43 84.68 L263.94 56.0 L264.85 55.08 L265.66 55.17 L268.71 58.64 L276.16 69.22 L281.12 77.78 L282.01 79.8 L281.93 80.7 L281.23 81.22 L278.47 81.82Z M106.41 237.44 L105.55 237.02 L105.53 235.8 L126.6 153.02 L127.15 152.36 L127.97 152.01 L132.64 151.83 L140.17 150.79 L148.71 148.26 L151.97 146.79 L155.37 144.68 L158.35 142.03 L159.75 140.0 L159.49 139.33 L158.07 139.09 L134.27 139.72 L131.22 140.14 L126.97 141.83 L124.51 143.86 L122.53 147.12 L118.69 155.86 L113.73 169.46 L112.33 170.51 L105.8 173.0 L104.17 173.5 L103.38 173.15 L103.36 172.34 L104.6 168.07 L111.09 149.76 L120.17 127.8 L125.43 116.41 L128.23 110.92 L129.96 108.27 L133.25 103.95 L139.92 96.88 L139.92 96.27 L139.43 95.46 L133.25 89.48 L132.96 88.75 L133.28 87.93 L136.75 85.08 L143.02 80.7 L153.19 75.47 L159.35 73.08 L164.98 71.47 L169.46 70.6 L176.78 69.94 L180.44 69.95 L188.17 70.58 L196.31 72.23 L201.59 73.85 L212.17 78.57 L221.32 84.5 L226.07 88.54 L230.76 93.22 L237.11 101.36 L240.19 106.44 L242.78 111.73 L245.05 117.42 L246.71 122.92 L248.42 131.86 L249.06 139.19 L249.05 144.27 L248.39 150.98 L246.79 158.51 L244.5 165.42 L243.29 167.54 L242.82 167.25 L242.66 166.24 L243.38 157.9 L243.37 144.27 L242.53 136.75 L241.65 132.07 L239.2 123.93 L236.07 116.41 L231.96 109.29 L228.33 104.2 L226.34 101.97 L221.73 97.41 L219.08 95.23 L211.76 90.42 L203.63 86.48 L194.47 83.79 L187.76 82.79 L182.47 82.36 L178.61 82.39 L174.14 82.99 L170.47 83.84 L167.02 85.02 L165.08 86.31 L166.0 86.55 L169.05 86.03 L175.15 85.8 L181.86 86.05 L191.22 87.76 L196.51 89.39 L204.24 92.69 L210.21 96.07 L214.2 99.11 L218.56 102.98 L223.48 108.68 L227.98 115.59 L231.32 122.51 L234.46 131.86 L236.17 141.02 L236.47 145.49 L236.22 156.07 L235.35 162.17 L233.06 172.14 L233.12 173.87 L263.02 215.69 L263.85 217.08 L263.83 217.82 L263.22 218.02 L262.2 217.84 L250.41 214.17 L239.63 211.58 L230.88 209.95 L217.46 208.47 L205.46 208.23 L204.16 207.53 L197.32 193.29 L196.82 191.86 L196.92 191.25 L197.73 191.46 L201.19 194.0 L204.44 195.78 L208.32 197.36 L211.76 198.29 L225.59 199.36 L239.63 201.51 L240.44 201.47 L240.9 201.02 L240.83 200.41 L240.07 199.19 L213.24 162.58 L213.39 161.93 L214.41 162.08 L223.15 166.73 L224.01 166.44 L224.89 164.81 L226.54 157.29 L227.31 145.9 L225.75 135.73 L224.03 129.42 L222.48 125.36 L220.57 121.49 L217.66 116.67 L215.03 113.15 L209.32 107.44 L201.39 102.14 L196.71 99.88 L190.2 97.46 L182.68 95.88 L177.39 95.57 L168.44 96.44 L161.32 98.17 L157.07 99.93 L151.76 102.78 L145.61 107.46 L140.36 112.95 L136.28 118.64 L133.23 123.93 L130.57 129.83 L129.9 132.07 L130.0 132.47 L130.61 132.77 L139.76 131.78 L166.2 131.77 L172.31 132.11 L173.53 132.63 L173.87 133.49 L172.34 137.97 L170.83 141.02 L168.96 143.86 L165.68 147.73 L160.89 151.59 L155.42 154.68 L149.32 157.11 L142.81 158.86 L137.13 159.53 L136.04 160.34 L135.39 161.97 L125.63 200.61 L121.55 216.88 L121.11 219.73 L121.46 220.14 L122.07 220.23 L124.71 219.43 L169.86 203.93 L173.58 202.03 L177.22 199.39 L182.27 193.32 L185.11 188.61 L189.11 180.07 L189.8 179.39 L190.45 179.86 L190.87 181.29 L191.1 190.03 L190.56 196.14 L189.73 199.8 L188.36 203.66 L185.12 209.1 L184.1 210.21 L182.88 210.96 L173.32 213.2 L157.25 218.12 L137.12 225.36Z M291.69 113.59 L261.39 109.49 L257.93 108.84 L257.41 108.07 L258.86 106.24 L281.05 85.69 L282.95 84.04 L283.76 83.76 L284.76 84.47 L285.82 86.92 L288.21 93.42 L290.6 101.36 L292.28 108.68 L292.78 112.14 L292.56 113.15Z M293.12 146.96 L291.69 146.8 L263.22 134.55 L262.09 133.9 L261.91 133.08 L264.03 131.64 L291.49 117.65 L292.92 117.37 L293.53 118.05 L293.96 120.07 L294.64 130.24 L294.63 137.97 L294.19 143.86 L293.88 146.1Z M283.97 179.53 L283.36 179.57 L282.54 179.12 L260.12 159.73 L258.21 157.9 L258.02 157.29 L258.25 156.88 L261.19 156.08 L290.07 151.16 L291.9 150.99 L292.71 151.31 L293.03 152.2 L292.38 155.66 L289.8 165.42 L286.59 174.58 L284.92 178.44Z M271.15 201.84 L270.34 201.88 L269.65 201.42 L263.83 195.41 L248.17 178.69 L246.8 177.02 L246.75 176.13 L247.56 175.93 L250.81 176.42 L280.92 182.01 L282.15 182.51 L282.5 183.12 L282.39 183.93 L279.76 189.02 L274.41 197.75Z M167.22 64.76 L165.39 64.69 L164.98 64.19 L164.97 63.53 L170.57 46.03 L171.08 45.08 L171.69 44.85 L172.71 46.01 L180.33 61.69 L180.65 62.92 L180.28 63.53 L179.63 63.77 L172.1 64.07Z M201.59 67.05 L193.46 65.28 L187.76 64.5 L186.9 64.14 L186.55 63.53 L186.93 62.51 L196.04 49.29 L197.73 46.91 L198.54 46.38 L199.15 46.75 L199.48 47.66 L201.98 63.12 L202.3 66.17Z M146.47 71.1 L145.86 71.18 L145.26 70.85 L144.95 69.22 L145.39 53.56 L145.66 51.46 L146.27 50.81 L147.29 51.34 L154.47 59.25 L158.92 64.34 L159.56 65.56 L159.32 66.17 L158.68 66.55 L152.78 68.38Z M221.53 76.54 L220.51 76.42 L214.71 72.88 L208.18 69.83 L207.63 69.42 L207.45 68.81 L208.16 67.8 L215.02 62.3 L222.95 55.99 L224.17 55.49 L224.64 56.0 L224.66 57.02 L222.29 75.12 L221.97 76.14Z M128.17 83.15 L127.27 83.05 L126.62 81.83 L122.48 65.76 L121.96 63.32 L122.27 62.56 L123.08 62.64 L124.71 63.53 L139.15 72.48 L140.28 73.49 L140.28 74.1 L139.76 74.7 L132.44 79.76Z M236.78 90.03 L235.56 89.62 L231.17 84.88 L225.55 80.0 L225.1 79.39 L225.16 78.78 L226.2 78.03 L238.07 73.08 L243.9 70.7 L244.92 70.62 L245.24 71.25 L244.88 72.47 L237.69 88.95Z M248.58 108.31 L247.76 108.35 L247.15 107.67 L244.26 101.97 L240.28 95.66 L240.24 94.52 L241.25 94.04 L245.53 93.41 L260.17 91.8 L261.46 92.0 L261.68 92.81 L261.04 93.83Z M122.68 219.78 L121.86 219.77 L121.51 219.32 L121.69 217.29 L134.76 165.42 L136.16 160.75 L137.32 159.89 L143.22 159.08 L149.53 157.35 L156.85 154.29 L162.14 150.97 L167.11 146.51 L170.09 142.64 L172.71 137.74 L174.21 133.49 L174.15 132.68 L173.53 132.09 L169.86 131.57 L138.75 131.57 L130.77 132.27 L130.36 131.66 L130.53 130.64 L133.25 124.39 L136.51 118.67 L139.97 113.82 L142.92 110.51 L147.49 106.23 L151.15 103.48 L157.05 100.24 L161.53 98.42 L164.78 97.48 L168.64 96.65 L176.58 95.83 L179.42 95.81 L185.73 96.69 L189.8 97.59 L194.68 99.28 L201.19 102.3 L208.45 107.05 L213.48 111.73 L216.66 115.59 L219.55 120.07 L222.03 124.95 L223.83 129.63 L225.51 135.73 L226.88 145.08 L226.43 156.47 L225.51 161.76 L224.63 164.81 L223.97 165.96 L223.36 166.32 L222.54 166.19 L213.59 161.4 L212.64 161.36 L212.5 161.97 L213.76 164.0 L239.73 199.19 L240.38 200.41 L240.24 200.98 L239.42 201.14 L226.41 199.15 L212.58 198.21 L208.71 197.24 L204.93 195.73 L200.78 193.45 L195.84 189.02 L194.88 187.59 L190.81 179.15 L190.41 178.63 L189.8 178.5 L189.19 179.14 L185.53 187.34 L182.4 192.68 L177.88 198.37 L174.49 201.22 L169.66 203.75Z M255.08 129.5 L254.07 129.35 L253.59 128.41 L252.42 121.29 L250.9 115.39 L251.22 114.24 L252.03 114.06 L255.69 114.61 L269.32 117.06 L270.5 117.63 L270.58 118.24 L269.93 118.96Z M255.29 151.83 L253.66 151.92 L253.24 151.59 L253.1 150.98 L254.12 142.44 L254.21 138.58 L254.47 137.79 L254.88 137.49 L256.31 137.78 L267.08 143.05 L272.37 145.69 L273.12 146.51 L272.84 147.12 L271.95 147.53Z M266.07 173.42 L252.85 172.02 L248.17 171.37 L247.36 171.02 L247.08 170.51 L247.21 169.69 L249.14 166.03 L251.63 160.07 L252.24 159.76 L253.05 160.09 L260.78 167.17 L265.92 172.14 L266.41 172.95Z"/><path id="lz-blue" fill-rule="evenodd" d="M185.32 48.72 L184.69 48.68 L184.1 47.89 L172.03 17.97 L171.35 15.73 L171.58 15.12 L172.1 14.76 L175.36 14.43 L180.03 14.41 L190.0 15.09 L200.78 16.87 L201.59 17.19 L202.05 17.76 L202.08 18.58 L201.74 19.39 L186.34 47.48Z M159.49 49.93 L158.22 49.08 L137.38 23.86 L136.52 22.44 L136.92 21.52 L142.81 19.37 L152.58 16.88 L162.95 15.09 L165.8 14.99 L166.61 15.39 L166.84 16.34 L166.22 19.8 L160.53 48.47 L160.1 49.55Z M210.14 54.59 L209.29 54.37 L208.82 52.95 L206.2 21.22 L206.29 19.19 L206.68 18.69 L207.29 18.51 L215.63 21.04 L225.59 24.94 L232.92 28.51 L234.54 29.59 L235.03 30.37 L234.76 31.19 L233.42 32.61Z M135.29 59.09 L134.47 58.84 L132.44 57.41 L114.54 44.24 L107.96 39.32 L107.24 38.31 L107.72 37.29 L112.1 34.0 L118.65 29.97 L125.73 26.09 L131.83 23.64 L132.5 23.86 L132.89 24.68 L133.71 32.61 L135.97 57.83 L135.88 58.64Z M232.31 68.03 L231.08 68.04 L230.87 66.98 L238.07 34.64 L238.63 33.02 L239.02 32.63 L239.63 32.55 L242.47 34.18 L252.05 41.36 L260.27 48.68 L262.61 51.3 L262.88 52.14 L262.54 52.75 L261.8 53.23Z M116.78 76.83 L115.36 76.38 L99.49 66.23 L88.32 59.05 L87.16 57.83 L87.19 57.02 L87.67 56.2 L93.59 49.61 L97.86 45.56 L102.95 41.29 L103.56 41.17 L104.17 41.46 L105.25 43.8 L116.72 74.51 L117.18 76.14Z M248.37 86.72 L247.56 86.65 L247.08 86.31 L246.99 85.69 L247.43 84.68 L263.94 56.0 L264.85 55.08 L265.66 55.17 L268.71 58.64 L276.16 69.22 L281.12 77.78 L282.01 79.8 L281.93 80.7 L281.23 81.22 L278.47 81.82Z M106.41 237.44 L105.55 237.02 L105.53 235.8 L126.6 153.02 L127.15 152.36 L127.97 152.01 L132.64 151.83 L140.17 150.79 L148.71 148.26 L151.97 146.79 L155.37 144.68 L158.35 142.03 L159.75 140.0 L159.49 139.33 L158.07 139.09 L134.27 139.72 L131.22 140.14 L126.97 141.83 L124.51 143.86 L122.53 147.12 L118.69 155.86 L113.73 169.46 L112.33 170.51 L105.8 173.0 L104.17 173.5 L103.38 173.15 L103.36 172.34 L104.6 168.07 L111.09 149.76 L120.17 127.8 L125.43 116.41 L128.23 110.92 L129.96 108.27 L133.25 103.95 L139.92 96.88 L139.92 96.27 L139.43 95.46 L133.25 89.48 L132.96 88.75 L133.28 87.93 L136.75 85.08 L143.02 80.7 L153.19 75.47 L159.35 73.08 L164.98 71.47 L169.46 70.6 L176.78 69.94 L180.44 69.95 L188.17 70.58 L196.31 72.23 L201.59 73.85 L212.17 78.57 L221.32 84.5 L226.07 88.54 L230.76 93.22 L237.11 101.36 L240.19 106.44 L242.78 111.73 L245.05 117.42 L246.71 122.92 L248.42 131.86 L249.06 139.19 L249.05 144.27 L248.39 150.98 L246.79 158.51 L244.5 165.42 L243.29 167.54 L242.82 167.25 L242.66 166.24 L243.38 157.9 L243.37 144.27 L242.53 136.75 L241.65 132.07 L239.2 123.93 L236.07 116.41 L231.96 109.29 L228.33 104.2 L226.34 101.97 L221.73 97.41 L219.08 95.23 L211.76 90.42 L203.63 86.48 L194.47 83.79 L187.76 82.79 L182.47 82.36 L178.61 82.39 L174.14 82.99 L170.47 83.84 L167.02 85.02 L165.08 86.31 L166.0 86.55 L169.05 86.03 L175.15 85.8 L181.86 86.05 L191.22 87.76 L196.51 89.39 L204.24 92.69 L210.21 96.07 L214.2 99.11 L218.56 102.98 L223.48 108.68 L227.98 115.59 L231.32 122.51 L234.46 131.86 L236.17 141.02 L236.47 145.49 L236.22 156.07 L235.35 162.17 L233.06 172.14 L233.12 173.87 L263.02 215.69 L263.85 217.08 L263.83 217.82 L263.22 218.02 L262.2 217.84 L250.41 214.17 L239.63 211.58 L230.88 209.95 L217.46 208.47 L205.46 208.23 L204.16 207.53 L197.32 193.29 L196.82 191.86 L196.92 191.25 L197.73 191.46 L201.19 194.0 L204.44 195.78 L208.32 197.36 L211.76 198.29 L225.59 199.36 L239.63 201.51 L240.44 201.47 L240.9 201.02 L240.83 200.41 L240.07 199.19 L213.24 162.58 L213.39 161.93 L214.41 162.08 L223.15 166.73 L224.01 166.44 L224.89 164.81 L226.54 157.29 L227.31 145.9 L225.75 135.73 L224.03 129.42 L222.48 125.36 L220.57 121.49 L217.66 116.67 L215.03 113.15 L209.32 107.44 L201.39 102.14 L196.71 99.88 L190.2 97.46 L182.68 95.88 L177.39 95.57 L168.44 96.44 L161.32 98.17 L157.07 99.93 L151.76 102.78 L145.61 107.46 L140.36 112.95 L136.28 118.64 L133.23 123.93 L130.57 129.83 L129.9 132.07 L130.0 132.47 L130.61 132.77 L139.76 131.78 L166.2 131.77 L172.31 132.11 L173.53 132.63 L173.87 133.49 L172.34 137.97 L170.83 141.02 L168.96 143.86 L165.68 147.73 L160.89 151.59 L155.42 154.68 L149.32 157.11 L142.81 158.86 L137.13 159.53 L136.04 160.34 L135.39 161.97 L125.63 200.61 L121.55 216.88 L121.11 219.73 L121.46 220.14 L122.07 220.23 L124.71 219.43 L169.86 203.93 L173.58 202.03 L177.22 199.39 L182.27 193.32 L185.11 188.61 L189.11 180.07 L189.8 179.39 L190.45 179.86 L190.87 181.29 L191.1 190.03 L190.56 196.14 L189.73 199.8 L188.36 203.66 L185.12 209.1 L184.1 210.21 L182.88 210.96 L173.32 213.2 L157.25 218.12 L137.12 225.36Z M291.69 113.59 L261.39 109.49 L257.93 108.84 L257.41 108.07 L258.86 106.24 L281.05 85.69 L282.95 84.04 L283.76 83.76 L284.76 84.47 L285.82 86.92 L288.21 93.42 L290.6 101.36 L292.28 108.68 L292.78 112.14 L292.56 113.15Z M293.12 146.96 L291.69 146.8 L263.22 134.55 L262.09 133.9 L261.91 133.08 L264.03 131.64 L291.49 117.65 L292.92 117.37 L293.53 118.05 L293.96 120.07 L294.64 130.24 L294.63 137.97 L294.19 143.86 L293.88 146.1Z M283.97 179.53 L283.36 179.57 L282.54 179.12 L260.12 159.73 L258.21 157.9 L258.02 157.29 L258.25 156.88 L261.19 156.08 L290.07 151.16 L291.9 150.99 L292.71 151.31 L293.03 152.2 L292.38 155.66 L289.8 165.42 L286.59 174.58 L284.92 178.44Z M271.15 201.84 L270.34 201.88 L269.65 201.42 L263.83 195.41 L248.17 178.69 L246.8 177.02 L246.75 176.13 L247.56 175.93 L250.81 176.42 L280.92 182.01 L282.15 182.51 L282.5 183.12 L282.39 183.93 L279.76 189.02 L274.41 197.75Z"/><path id="lz-gold" fill-rule="evenodd" d="M167.22 64.76 L165.39 64.69 L164.98 64.19 L164.97 63.53 L170.57 46.03 L171.08 45.08 L171.69 44.85 L172.71 46.01 L180.33 61.69 L180.65 62.92 L180.28 63.53 L179.63 63.77 L172.1 64.07Z M201.59 67.05 L193.46 65.28 L187.76 64.5 L186.9 64.14 L186.55 63.53 L186.93 62.51 L196.04 49.29 L197.73 46.91 L198.54 46.38 L199.15 46.75 L199.48 47.66 L201.98 63.12 L202.3 66.17Z M146.47 71.1 L145.86 71.18 L145.26 70.85 L144.95 69.22 L145.39 53.56 L145.66 51.46 L146.27 50.81 L147.29 51.34 L154.47 59.25 L158.92 64.34 L159.56 65.56 L159.32 66.17 L158.68 66.55 L152.78 68.38Z M221.53 76.54 L220.51 76.42 L214.71 72.88 L208.18 69.83 L207.63 69.42 L207.45 68.81 L208.16 67.8 L215.02 62.3 L222.95 55.99 L224.17 55.49 L224.64 56.0 L224.66 57.02 L222.29 75.12 L221.97 76.14Z M128.17 83.15 L127.27 83.05 L126.62 81.83 L122.48 65.76 L121.96 63.32 L122.27 62.56 L123.08 62.64 L124.71 63.53 L139.15 72.48 L140.28 73.49 L140.28 74.1 L139.76 74.7 L132.44 79.76Z M236.78 90.03 L235.56 89.62 L231.17 84.88 L225.55 80.0 L225.1 79.39 L225.16 78.78 L226.2 78.03 L238.07 73.08 L243.9 70.7 L244.92 70.62 L245.24 71.25 L244.88 72.47 L237.69 88.95Z M248.58 108.31 L247.76 108.35 L247.15 107.67 L244.26 101.97 L240.28 95.66 L240.24 94.52 L241.25 94.04 L245.53 93.41 L260.17 91.8 L261.46 92.0 L261.68 92.81 L261.04 93.83Z M122.68 219.78 L121.86 219.77 L121.51 219.32 L121.69 217.29 L134.76 165.42 L136.16 160.75 L137.32 159.89 L143.22 159.08 L149.53 157.35 L156.85 154.29 L162.14 150.97 L167.11 146.51 L170.09 142.64 L172.71 137.74 L174.21 133.49 L174.15 132.68 L173.53 132.09 L169.86 131.57 L138.75 131.57 L130.77 132.27 L130.36 131.66 L130.53 130.64 L133.25 124.39 L136.51 118.67 L139.97 113.82 L142.92 110.51 L147.49 106.23 L151.15 103.48 L157.05 100.24 L161.53 98.42 L164.78 97.48 L168.64 96.65 L176.58 95.83 L179.42 95.81 L185.73 96.69 L189.8 97.59 L194.68 99.28 L201.19 102.3 L208.45 107.05 L213.48 111.73 L216.66 115.59 L219.55 120.07 L222.03 124.95 L223.83 129.63 L225.51 135.73 L226.88 145.08 L226.43 156.47 L225.51 161.76 L224.63 164.81 L223.97 165.96 L223.36 166.32 L222.54 166.19 L213.59 161.4 L212.64 161.36 L212.5 161.97 L213.76 164.0 L239.73 199.19 L240.38 200.41 L240.24 200.98 L239.42 201.14 L226.41 199.15 L212.58 198.21 L208.71 197.24 L204.93 195.73 L200.78 193.45 L195.84 189.02 L194.88 187.59 L190.81 179.15 L190.41 178.63 L189.8 178.5 L189.19 179.14 L185.53 187.34 L182.4 192.68 L177.88 198.37 L174.49 201.22 L169.66 203.75Z M255.08 129.5 L254.07 129.35 L253.59 128.41 L252.42 121.29 L250.9 115.39 L251.22 114.24 L252.03 114.06 L255.69 114.61 L269.32 117.06 L270.5 117.63 L270.58 118.24 L269.93 118.96Z M255.29 151.83 L253.66 151.92 L253.24 151.59 L253.1 150.98 L254.12 142.44 L254.21 138.58 L254.47 137.79 L254.88 137.49 L256.31 137.78 L267.08 143.05 L272.37 145.69 L273.12 146.51 L272.84 147.12 L271.95 147.53Z M266.07 173.42 L252.85 172.02 L248.17 171.37 L247.36 171.02 L247.08 170.51 L247.21 169.69 L249.14 166.03 L251.63 160.07 L252.24 159.76 L253.05 160.09 L260.78 167.17 L265.92 172.14 L266.41 172.95Z"/></defs></svg>
+
+
+<script>
+const SPARTAN = {white:"#ffffff", blue:"#0055a2", gold:"#e5a823"};
+const PRESETS = [
+  {name:"Spartan", z:{white:"#ffffff",blue:"#0055a2",gold:"#e5a823"}},
+  {name:"Gold rush", z:{white:"#ffe6a6",blue:"#e5a823",gold:"#ffd15c"}},
+  {name:"All white", z:{white:"#ffffff",blue:"#ffffff",gold:"#ffffff"}},
+  {name:"Night warm", z:{white:"#ffb46b",blue:"#7a3d14",gold:"#ff8c2a"}},
+];
+const mk = (o) => Object.assign({on:true,bri:80,effect:"solid",zones:{...SPARTAN},online:true,
+  sched:{enabled:true,onMode:"sunset",offset:0,onTime:"18:00",dimStart:"23:00",fade:45}}, o);
+
+const signs = [
+  mk({id:"s01",name:"Engineering Building lobby",link:"wifi",bri:85,ip:"10.12.4.31",rssi:-58,ssid:"SJSU-IoT"}),
+  mk({id:"s02",name:"MLK Library, 2nd floor",link:"wifi",bri:60,effect:"breathe",ip:"10.12.9.114",rssi:-66,ssid:"SJSU-IoT",
+      sched:{enabled:true,onMode:"time",offset:0,onTime:"17:30",dimStart:"22:00",fade:60}}),
+  mk({id:"s03",name:"Student Union window",link:"wifi",on:false,bri:100,effect:"gameday",ip:"10.12.2.77",rssi:-71,ssid:"SJSU-IoT",
+      sched:{enabled:true,onMode:"sunset",offset:15,onTime:"18:00",dimStart:"00:00",fade:30}}),
+  mk({id:"s04",name:"Tech lab, IS 133",link:"wifi",online:false,on:false,ip:"—",rssi:null,ssid:"SJSU-IoT"}),
+  mk({id:"s05",name:"Event Center booth (portable)",link:"hotspot",bri:100,effect:"gameday",ip:"4.3.2.1",rssi:null,ssid:null,
+      sched:{enabled:false,onMode:"sunset",offset:0,onTime:"18:00",dimStart:"23:00",fade:45}}),
+  mk({id:"s06",name:"BJ's desk (Home Assistant)",link:"zigbee",bri:40,ip:null,rssi:null,ssid:null,
+      sched:{enabled:true,onMode:"time",offset:0,onTime:"19:00",dimStart:"23:30",fade:90}}),
+  mk({id:"s07",name:"Maya's apartment",link:"wifi",bri:55,effect:"breathe",ip:"192.168.1.42",rssi:-49,ssid:"Home-WiFi",
+      sched:{enabled:true,onMode:"time",offset:0,onTime:"20:00",dimStart:"23:30",fade:60}}),
+];
+signs.forEach((s,i)=>{s.ap="Spartan-Sign-"+String(i+1).padStart(2,"0"); s.pass="spartan-"+["7Kq2","m4Rt","x9Lb","p2Vw","h6Nd","c3Jz","w8Tf"][i];});
+
+/* ---------- accounts: one master, owners below (people, the school, the club), shared users below owners ---------- */
+const ACCOUNTS=[
+  {id:"bj",name:"Branden",kind:"Master",email:"branden@example.com"},
+  {id:"sme",name:"SME Club",kind:"Club",email:"sme.club@example.com"},
+  {id:"sjsu",name:"SJSU Facilities",kind:"School",email:"facilities@example.com"},
+  {id:"maya",name:"Maya Chen",kind:"Student",email:"maya.chen@example.com"},
+  {id:"jordan",name:"Jordan Lee",kind:"Student",email:"jordan.lee@example.com"},
+];
+const OWN={s01:["sjsu",[]],s02:["sjsu",["sme"]],s03:["sme",["maya"]],s04:["sme",[]],s05:["sme",["maya","jordan"]],s06:["bj",[]],s07:["maya",["jordan"]]};
+signs.forEach(s=>{ [s.owner,s.shared]=[OWN[s.id][0],[...OWN[s.id][1]]]; });
+let me="bj";
+const acct=(id)=>ACCOUNTS.find(a=>a.id===id);
+const who=(id)=>acct(id)?acct(id).name:id;
+const isMaster=()=>acct(me)?.kind==="Master";
+const roleOf=(s)=> s.owner===me?"owner": isMaster()?"master": (s.shared||[]).includes(me)?"shared": null;
+const vis=()=>signs.filter(roleOf);
+
+/* ---------- support tickets (each new one posts to the #sign-support Discord channel) ---------- */
+const ISSUES=["Won't turn on","Flicker or wrong colors","Won't connect to Wi-Fi","Schedule not working","Other"];
+const TICKETS=[
+  {id:1041,sign:"s04",by:"sme",type:"Won't connect to Wi-Fi",text:"Went offline after the lab router was swapped.",at:Date.now()-2*3600e3,open:true},
+  {id:1042,sign:"s07",by:"jordan",type:"Flicker or wrong colors",text:"Gold section flickers in game day mode.",at:Date.now()-25*60e3,open:true},
+];
+let lastSent=null, showPw=false;
+const openT=(id)=>TICKETS.filter(t=>t.open&&t.sign===id);
+const signName=(id)=>(get(id)||{}).name||"Removed sign";
+const ago=(t)=>{ const m=Math.round((Date.now()-t)/60000); return m<1?"just now":m<60?m+" min ago":Math.round(m/60)+" h ago"; };
+function tixRow(t,withSign,canResolve){
+  return `<div class="tix-row"><div><b>#${t.id} · ${esc(t.type)}</b>${withSign?` <span class="muted">on ${esc(signName(t.sign))}</span>`:""}
+    <div class="muted" style="font-size:13px">${esc(t.text)}</div><div class="mono muted" style="font-size:11.5px">${esc(who(t.by))} · ${ago(t.at)}</div></div>
+    ${canResolve?`<button class="btn" data-resolve="${t.id}" style="padding:4px 10px;font-size:13px">Resolve</button>`:`<span class="pill fade">Open</span>`}</div>`;
+}
+function renderTickets(){
+  const el=$("tickets"); if(!isMaster()){ el.innerHTML=""; return; }
+  const open=TICKETS.filter(t=>t.open);
+  el.innerHTML=`<div class="sec tix"><div class="row" style="justify-content:space-between"><h3>Support tickets</h3><span class="pill ${open.length?"fade":"on"}">${open.length} open</span></div>
+    ${open.length?open.map(t=>tixRow(t,true,true)).join(""):`<span class="muted" style="font-size:13px">No open tickets.</span>`}
+    <span class="muted" style="font-size:12px">New tickets also post to #sign-support on your Discord.</span></div>`;
+}
+function discordHTML(t){
+  const s=get(t.sign);
+  return `<span class="dc-cap">Preview of the alert posted to your Discord</span>
+  <div class="dc"><div class="dc-head"><span class="dc-ava">SB</span><b>Sign Bot</b><span class="dc-tag">APP</span><span class="dc-muted">#sign-support · Today at ${new Date(t.at).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}</span></div>
+    <div class="dc-embed"><b>New ticket #${t.id}: ${esc(t.type)}</b><p>${esc(t.text)}</p>
+      <div class="dc-fields"><div><span>Sign</span>${esc(signName(t.sign))}</div><div><span>Owner</span>${esc(who(s?s.owner:""))}</div>
+        <div><span>Reported by</span>${esc(who(t.by))}</div><div><span>Status</span>${s?(s.online?"Online":"Offline")+" · "+linkName(s):"—"}</div></div>
+      <span class="dc-muted">Open in dashboard</span></div></div>`;
+}
+function helpHTML(s,can){
+  const list=openT(s.id).filter(t=>can||t.by===me);
+  return `<div class="sec"><h3>Help</h3>
+    ${list.length?`<div class="tix">${list.map(t=>tixRow(t,false,can)).join("")}</div>`:""}
+    <div id="repWrap"><button class="btn" id="repBtn">Report a problem</button></div>
+    ${lastSent&&lastSent.sign===s.id?`<div style="display:grid;gap:6px">${discordHTML(lastSent)}</div>`:""}</div>`;
+}
+document.addEventListener("click",(e)=>{ const b=e.target.closest("[data-resolve]"); if(!b) return;
+  const t=TICKETS.find(x=>x.id===+b.dataset.resolve); t.open=false; renderFleet(); renderDetail(); toast(`Ticket #${t.id} resolved`); });
+
+let sel = "s01", scrub = null, phase = 0;
+const $ = (id) => document.getElementById(id);
+const get = (id) => signs.find(s=>s.id===id);
+const esc = (t) => String(t).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- time helpers ---------- */
+const toMin = (hhmm) => { const [h,m]=hhmm.split(":").map(Number); return h*60+m; };
+const fmt = (min) => { min=((Math.round(min)%1440)+1440)%1440; let h=Math.floor(min/60), m=min%60;
+  const ap=h>=12?"PM":"AM"; h=h%12||12; return h+":"+String(m).padStart(2,"0")+" "+ap; };
+const eve = (min) => min < 720 ? min + 1440 : min; // treat after-midnight times as "tonight"
+
+function sunsetMin(date){ // NOAA-style approximation for San Jose
+  const lat=37.3382, lng=-121.8863, r=Math.PI/180;
+  const N=Math.floor((date - new Date(date.getFullYear(),0,0))/864e5);
+  const lh=lng/15, t=N+(18-lh)/24, M=0.9856*t-3.289;
+  let L=(M+1.916*Math.sin(M*r)+0.020*Math.sin(2*M*r)+282.634+360)%360;
+  let RA=(Math.atan(0.91764*Math.tan(L*r))/r+360)%360;
+  RA=(RA+Math.floor(L/90)*90-Math.floor(RA/90)*90)/15;
+  const sd=0.39782*Math.sin(L*r), cd=Math.cos(Math.asin(sd));
+  const cosH=(Math.cos(90.833*r)-sd*Math.sin(lat*r))/(cd*Math.cos(lat*r));
+  const H=Math.acos(cosH)/r/15, T=H+RA-0.06571*t-6.622;
+  const UT=((T-lh)%24+24)%24, off=-date.getTimezoneOffset()/60;
+  return ((UT+off)%24+24)%24*60;
+}
+const SUNSET = sunsetMin(new Date());
+
+function plan(s){
+  const on = s.sched.onMode==="sunset" ? SUNSET + Number(s.sched.offset) : toMin(s.sched.onTime);
+  const dim = eve(toMin(s.sched.dimStart));
+  return {on:eve(on), dim, off:dim+Number(s.sched.fade)};
+}
+function schedBri(s, t){ // brightness the schedule gives at evening-minute t
+  const p=plan(s); t=eve(t);
+  if (t<p.on || t>=p.off) return 0;
+  if (t<p.dim) return s.bri;
+  return Math.round(s.bri*(1-(t-p.dim)/s.sched.fade));
+}
+
+/* ---------- badge: Spartan mark (licensed file), zones defined once in the hidden defs ---------- */
+function zoneColors(s){
+  if (s.effect==="gameday" && phase%2) return {white:s.zones.white, blue:s.zones.gold, gold:s.zones.blue};
+  return s.zones;
+}
+function badge(s, bri){
+  const z=zoneColors(s), a=(bri/100).toFixed(2);
+  const glow = bri>0 ? `filter:drop-shadow(0 0 ${Math.round(2+bri/9)}px ${z.blue}${Math.round(bri*1.2).toString(16).padStart(2,"0")})` : "";
+  return `<svg class="badge ${s.effect==="breathe"&&bri>0?"breathe":""}" viewBox="66 4 248 248" style="${glow}" aria-hidden="true">
+    <use href="#lz-white" fill="var(--unlit)"/><use href="#lz-blue" fill="var(--sunk)"/><use href="#lz-gold" fill="var(--unlit)"/>
+    <g class="lit" opacity="${a}">
+      <use href="#lz-white" fill="${z.white}"/><use href="#lz-blue" fill="${z.blue}"/><use href="#lz-gold" fill="${z.gold}"/>
+    </g></svg>`;
+}
+
+/* ---------- status ---------- */
+function liveBri(s){ if(!s.online||!s.on) return 0; return s._fade!=null ? s._fade : s.bri; }
+function status(s){
+  if(!s.online) return ["offline","Offline"];
+  if(s._fade!=null) return ["fade","Fading"];
+  return s.on ? ["on","On "+s.bri+"%"] : ["off","Off"];
+}
+const linkName = (s) => ({wifi:"Wi-Fi",hotspot:"Own hotspot",zigbee:"Zigbee"})[s.link];
+const effName = {solid:"Solid",breathe:"Breathe",gameday:"Game day"};
+
+/* ---------- fleet ---------- */
+function renderFleet(){
+  const V=vis(); if(!V.some(s=>s.id===sel)) sel=V[0]?V[0].id:null;
+  $("list").innerHTML = V.map(s=>{ const [c,t]=status(s); return `
+    <button class="sign" data-id="${s.id}" aria-current="${s.id===sel}">
+      <div>${badge(s, liveBri(s))}</div>
+      <div style="min-width:0"><div class="nm">${esc(s.name)}</div>
+        <div class="sub"><span class="pill ${c}">${t}</span>${(isMaster()||s.owner===me)&&openT(s.id).length?`<span class="pill fade">${openT(s.id).length} ticket${openT(s.id).length>1?"s":""}</span>`:""}${roleOf(s)==="master"?`<span>${esc(who(s.owner))}</span>`:roleOf(s)==="shared"?`<span>Shared by ${esc(who(s.owner))}</span>`:`<span>${linkName(s)}</span>`}${s.online&&s.on?`<span>${effName[s.effect]}</span>`:""}</div></div>
+      <span class="switch" role="switch" aria-label="Power" aria-checked="${s.on&&s.online}" data-pw="${s.id}" ${s.online?"":"aria-disabled=\"true\" style=\"opacity:.4\""}></span>
+    </button>`}).join("");
+  const on=V.filter(s=>s.online&&s.on).length, off=V.filter(s=>!s.online).length;
+  $("fleetStat").textContent = `${on} of ${V.length} on · ${off} offline`;
+  updateWho(); renderTickets();
+}
+$("list").addEventListener("click", e=>{
+  const pw=e.target.closest("[data-pw]");
+  if(pw){ const s=get(pw.dataset.pw); if(!s.online){toast("That sign is offline");return;}
+    s._fade=null; s.on=!s.on; renderFleet(); if(s.id===sel) syncDetail(); return; }
+  const b=e.target.closest(".sign"); if(!b) return;
+  sel=b.dataset.id; scrub=null; showPw=false; renderFleet(); renderDetail();
+  if (matchMedia("(max-width:860px)").matches) $("detail").scrollIntoView({behavior:"smooth",block:"start"});
+});
+$("allOn").onclick=()=>{vis().forEach(s=>{if(s.online){s.on=true;s._fade=null}});renderFleet();syncDetail();toast("All online signs on");};
+$("allOff").onclick=()=>{vis().forEach(s=>{s.on=false;s._fade=null});renderFleet();syncDetail();toast("All signs off");};
+$("allGame").onclick=()=>{vis().forEach(s=>{if(s.online){s.on=true;s.effect="gameday";s._fade=null}});renderFleet();renderDetail();toast("Game day on every online sign");};
+
+$("addBtn").onclick=()=>openAdd();
+function updateWho(){
+  const V=vis(), own=V.filter(s=>s.owner===me).length, sh=V.filter(s=>roleOf(s)==="shared").length;
+  $("whoRole").className="pill "+(isMaster()?"master":"role");
+  $("whoRole").textContent=isMaster()?"Master · all signs":`Owner of ${own}${sh?` · ${sh} shared`:""}`;
+  $("fleetTitle").textContent=isMaster()?"All signs":"My signs";
+}
+function fillWho(){ $("who").innerHTML=ACCOUNTS.map(a=>`<option value="${a.id}" ${a.id===me?"selected":""}>${esc(a.name)} · ${a.kind==="Master"?"Master":"Owner ("+a.kind.toLowerCase()+")"}</option>`).join(""); }
+const initials=(n)=>n.split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();
+function signIn(id){ me=id; fillWho(); closeAdd(); scrub=null; sel=null; showPw=false; lastSent=null;
+  $("gate").hidden=true; $("app").hidden=false; $("acctBox").hidden=false; $("gPick").hidden=true; $("mLink").value="";
+  renderFleet(); renderDetail(); toast("Signed in as "+who(me)); }
+$("signOut").onclick=()=>{ closeAdd(); $("gate").hidden=false; $("app").hidden=true; $("acctBox").hidden=true; toast("Signed out"); };
+$("gBtn").onclick=()=>{ $("gList").innerHTML=ACCOUNTS.map(a=>`<button class="gacct" data-sign="${a.id}"><span class="gav">${initials(a.name)}</span><span><b>${esc(a.name)}</b><small>${esc(a.email)}</small></span></button>`).join("");
+  $("gPick").hidden=false; };
+$("gList").onclick=(e)=>{ const b=e.target.closest("[data-sign]"); if(b) signIn(b.dataset.sign); };
+$("mLink").oninput=()=>{ $("gErr").hidden=true; };
+$("mForm").onsubmit=(e)=>{ e.preventDefault(); const v=$("mLink").value.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ $("gErr").textContent="Enter a valid email address."; $("gErr").hidden=false; return; }
+  let a=ACCOUNTS.find(x=>x.email===v);
+  if(!a){ const nm=v.split("@")[0].replace(/[._-]+/g," ").replace(/\b\w/g,c=>c.toUpperCase()); a={id:"u"+Date.now().toString(36),name:nm,kind:"Student",email:v}; ACCOUNTS.push(a); }
+  signIn(a.id); };
+$("who").onchange=()=>{ me=$("who").value; closeAdd(); scrub=null; sel=null; renderFleet(); renderDetail(); toast("Signed in as "+who(me)); };
+
+/* ---------- add a sign ---------- */
+let add=null;
+const nextAP=(k=0)=>"Spartan-Sign-"+String(Math.max(0,...signs.map(s=>parseInt((s.ap||"").slice(-2))||0))+1+k).padStart(2,"0");
+const STEPS={wifi:["Type","Find","Network","Claim"],zigbee:["Type","Pair","Claim"]};
+function openAdd(){ add={step:0,method:null,found:null,ssid:"SJSU-IoT",pass:"",name:"",code:"",owner:me,err:"",busy:false};
+  $("addPanel").hidden=false; $("addBtn").hidden=true; renderAdd(); }
+function closeAdd(){ add=null; $("addPanel").hidden=true; $("addPanel").innerHTML=""; $("addBtn").hidden=false; }
+function renderAdd(){
+  if(!add) return;
+  const steps=add.method?STEPS[add.method]:STEPS.wifi, key=add.method?steps[add.step]:"Type";
+  let body="";
+  if(key==="Type") body=`<span class="lbl">How does the new sign connect?</span>
+    <button class="opt" data-m="wifi"><b>Wi-Fi sign</b><span>New build, broadcasting its setup hotspot</span></button>
+    <button class="opt" data-m="zigbee"><b>Zigbee sign</b><span>Zigbee firmware, pairs through Home Assistant</span></button>`;
+  else if(key==="Find") body=`<span class="lbl">Signs broadcasting a setup hotspot nearby</span>
+    ${[0,1].map(k=>{const ap=nextAP(k);return `<button class="opt" data-ap="${ap}" aria-pressed="${add.found===ap}"><b class="mono" style="font-size:14px">${ap}</b><span>${k?"Weak signal":"Strong signal"} · not set up yet</span></button>`;}).join("")}
+    <span class="muted" style="font-size:13px">Or scan the setup QR sticker on the back of the sign with your phone camera.</span>`;
+  else if(key==="Pair") body = add.found
+    ? `<div class="opt" aria-pressed="true"><b>Found: Spartan sign (ESP32-C6)</b><span>Joined your Zigbee network through Home Assistant</span></div>`
+    : `<p style="margin:0;font-size:14px">Power-cycle the sign 3 times (off and on, about 1 s each). The LEDs blink blue when it's ready to pair.</p>
+       ${add.busy?`<span style="font-size:14px"><span class="spin"></span> Searching for new Zigbee devices…</span>`:`<button class="btn primary" id="aPair" style="justify-self:start">Start pairing</button>`}`;
+  else if(key==="Network") body=`<div class="field"><label for="aSsid">Put ${add.found} on</label><select id="aSsid">
+      ${["SJSU-IoT","SME-Club-Booth","Home-WiFi"].map(n=>`<option ${add.ssid===n?"selected":""}>${n}</option>`).join("")}
+      <option value="hotspot" ${add.ssid==="hotspot"?"selected":""}>No Wi-Fi, keep its own hotspot</option></select></div>
+    <div class="field" id="aPassWrap" ${add.ssid==="hotspot"?"hidden":""}><label for="aPass">Wi-Fi password</label><input type="password" id="aPass" value="${esc(add.pass)}" placeholder="Leave blank if the network is open"></div>`;
+  else body=`<div class="field"><label for="aCode">Claim code</label><input type="text" id="aCode" value="${esc(add.code)}" placeholder="Printed under the QR, e.g. K7Q-2MX" maxlength="7" autocomplete="off" style="font-family:var(--mono);text-transform:uppercase"></div>
+    <div class="field"><label for="aName">Sign name</label><input type="text" id="aName" value="${esc(add.name)}" placeholder="e.g. Engineering Building, 2nd floor" maxlength="48"></div>
+    ${isMaster()?`<div class="field"><label for="aOwner">Owner</label><select id="aOwner">${ACCOUNTS.map(a=>`<option value="${a.id}" ${a.id===add.owner?"selected":""}>${esc(a.name)} (${a.kind})</option>`).join("")}</select></div>`:`<span class="muted" style="font-size:13px">You'll be the owner of this sign.</span>`}`;
+  const last=key==="Claim", ready=(key==="Find"||key==="Pair")?!!add.found:true;
+  $("addPanel").innerHTML=`<div class="row" style="justify-content:space-between"><strong style="font-family:var(--display);font-size:20px">Add a sign</strong>
+      <button class="btn" id="aCancel" style="padding:4px 10px">Cancel</button></div>
+    <div class="steps">${steps.map((t,i)=>`<span ${i===add.step?'aria-current="step"':""}>${i+1}. ${t}</span>`).join("<span>›</span>")}</div>
+    ${body}
+    ${add.err?`<span class="err" role="alert">${add.err}</span>`:""}
+    ${key!=="Type"?`<div class="row"><button class="btn" id="aBack" ${add.busy?"disabled":""}>Back</button>
+      <button class="btn primary" id="aNext" ${ready&&!add.busy?"":"disabled"}>${add.busy&&last?`<span class="spin"></span> Connecting…`:last?"Add sign":"Next"}</button></div>`:""}`;
+  bindAdd(key);
+}
+function bindAdd(key){
+  const P=$("addPanel"), clearErr=()=>{ if(add.err){ add.err=""; P.querySelector(".err")?.remove(); } };
+  $("aCancel").onclick=closeAdd;
+  P.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ add.method=b.dataset.m; add.step=1; add.found=null; add.err=""; renderAdd(); });
+  P.querySelectorAll("[data-ap]").forEach(b=>b.onclick=()=>{ add.found=b.dataset.ap; add.err=""; renderAdd(); });
+  const pair=$("aPair"); if(pair) pair.onclick=()=>{ add.busy=true; renderAdd();
+    setTimeout(()=>{ if(!add) return; add.busy=false; add.found=nextAP(); renderAdd(); },2200); };
+  const ss=$("aSsid"); if(ss) ss.onchange=()=>{ add.ssid=ss.value; $("aPassWrap").hidden=add.ssid==="hotspot"; clearErr(); };
+  const pw=$("aPass"); if(pw) pw.oninput=()=>{ add.pass=pw.value; clearErr(); };
+  const cd=$("aCode"); if(cd){ cd.oninput=()=>{ add.code=cd.value.toUpperCase(); clearErr(); }; if(!add.busy&&!add.code) cd.focus(); }
+  const ow=$("aOwner"); if(ow) ow.onchange=()=>{ add.owner=ow.value; clearErr(); };
+  const nm=$("aName"); if(nm){ nm.oninput=()=>{ add.name=nm.value; clearErr(); }; nm.onkeydown=(e)=>{ if(e.key==="Enter") $("aNext").click(); }; }
+  const back=$("aBack"); if(back) back.onclick=()=>{ add.err=""; if(add.step<=1){ add.step=0; add.method=null; add.found=null; } else add.step--; renderAdd(); };
+  const nx=$("aNext"); if(nx) nx.onclick=()=>{
+    if(key==="Claim"){
+      if(add.code.replace(/[^A-Z0-9]/gi,"").length!==6){ add.err="Enter the 6-character claim code from the sticker."; return renderAdd(); }
+      const v=add.name.trim();
+      if(!v){ add.err="Give the sign a name so people can find it."; return renderAdd(); }
+      if(signs.some(x=>x.owner===add.owner&&x.name.toLowerCase()===v.toLowerCase())){ add.err="This owner already has a sign with that name."; return renderAdd(); }
+      add.busy=true; renderAdd(); setTimeout(finishAdd,1300); return;
+    }
+    add.step++; add.err=""; renderAdd();
+  };
+}
+function finishAdd(){
+  if(!add) return;
+  const w=add.method==="wifi", hot=w&&add.ssid==="hotspot", r=(a,b)=>a+Math.floor(Math.random()*(b-a));
+  const s=mk({id:"s"+Date.now().toString(36), name:add.name.trim(), link:w?(hot?"hotspot":"wifi"):"zigbee", bri:80,
+    ip:w?(hot?"4.3.2.1":`10.12.${r(2,11)}.${r(20,220)}`):null, rssi:w&&!hot?-r(52,70):null, ssid:w&&!hot?add.ssid:null});
+  s.ap=add.found; s.pass="spartan-"+Math.random().toString(36).slice(2,6); s.owner=add.owner||me; s.shared=[];
+  signs.push(s); sel=s.id; scrub=null;
+  const nm=s.name, via=s.link==="zigbee"?"Zigbee":s.link==="hotspot"?"its own hotspot":s.ssid;
+  const own=s.owner===me?"":` for ${who(s.owner)}`; closeAdd(); renderFleet(); renderDetail(); toast(`Added ${nm}${own} on ${via}`);
+}
+
+/* ---------- detail ---------- */
+function renderDetail(){
+  const s=get(sel), r=s&&roleOf(s), can=isMaster()||r==="owner";
+  if(!s||!r){ $("detail").innerHTML=`<div class="empty"><h2>No signs yet</h2><p class="muted" style="margin:0">Add a sign with the claim code on its sticker, or ask an owner to share one with you.</p><button class="btn primary" id="emptyAdd">+ Add sign</button></div>`;
+    $("emptyAdd").onclick=()=>{ if(!add) openAdd(); $("addPanel").scrollIntoView({behavior:"smooth",block:"center"}); }; return; }
+  const dis = s.online ? "" : "disabled";
+  $("detail").innerHTML = `
+    <div class="d-head">
+      <div><h2>${esc(s.name)}</h2>
+        <div class="chips"><span class="pill ${status(s)[0]}" id="dPill">${status(s)[1]}</span><span class="pill off">${linkName(s)}</span>${r==="shared"?`<span class="pill role">Shared by ${esc(who(s.owner))}</span>`:r==="master"?`<span class="pill role">Owner: ${esc(who(s.owner))}</span>`:`<span class="pill role">You own this</span>`}</div></div>
+      <div class="power">Power <button class="switch" id="dPower" role="switch" aria-label="Power" aria-checked="${s.on&&s.online}" ${dis}></button></div>
+    </div>
+
+    <div class="stage">
+      <div class="pv"><div id="dBadge"></div><span class="cap" id="dCap"></span></div>
+      <div class="ctrl">
+        <div class="field"><label for="dBri">Brightness</label>
+          <div class="row"><input type="range" id="dBri" min="5" max="100" step="1" value="${s.bri}" ${dis}><span class="val" id="dBriV">${s.bri}%</span></div></div>
+        <div class="field"><span class="lbl">Effect</span>
+          <div class="seg" id="dEff">${Object.keys(effName).map(k=>`<button data-eff="${k}" aria-pressed="${s.effect===k}" ${dis}>${effName[k]}</button>`).join("")}</div>
+          <span class="muted" style="font-size:13px">Game day swaps the blue and gold zones back and forth.</span></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <h3>Zone colors</h3>
+      <div class="zones">
+        ${[["white","Border","outer outline"],["blue","Crest","outline + spikes"],["gold","Helmet","center fill"]].map(([k,n,d])=>`
+        <label class="zone" for="z-${k}"><input type="color" id="z-${k}" data-zone="${k}" value="${s.zones[k]}" ${dis}>
+          <span><span class="zn">${n}</span><br><span class="muted" style="font-size:12px">${d}</span></span></label>`).join("")}
+      </div>
+      <div class="presets">${PRESETS.map((pr,i)=>`<button class="chip" data-pre="${i}" ${dis}><i><b style="background:${pr.z.blue}"></b><b style="background:${pr.z.gold}"></b><b style="background:${pr.z.white}"></b></i>${pr.name}</button>`).join("")}</div>
+    </div>
+
+    <div class="sec">
+      <div class="row" style="justify-content:space-between"><h3>Nightly schedule</h3>
+        <div class="power" style="font-size:14px">Use schedule <button class="switch" id="sEn" role="switch" aria-label="Use schedule" aria-checked="${s.sched.enabled}"></button></div></div>
+      <div id="sBody" ${s.sched.enabled?"":"hidden"} style="display:grid;gap:12px">
+        <div class="sched-grid">
+          <div class="field"><span class="lbl">Turn on</span>
+            <div class="seg" id="sMode"><button data-mode="sunset" aria-pressed="${s.sched.onMode==="sunset"}">At sunset</button><button data-mode="time" aria-pressed="${s.sched.onMode==="time"}">Set time</button></div>
+            <div id="sSunWrap" ${s.sched.onMode==="sunset"?"":"hidden"}><select id="sOff">${[-30,-15,0,15,30].map(v=>`<option value="${v}" ${+s.sched.offset===v?"selected":""}>${v===0?"Right at sunset":(v<0?Math.abs(v)+" min before":v+" min after")}</option>`).join("")}</select></div>
+            <div id="sTimeWrap" ${s.sched.onMode==="time"?"":"hidden"}><input type="time" id="sOn" value="${s.sched.onTime}"></div>
+          </div>
+          <div class="field"><label for="sDim">Start dimming at</label><input type="time" id="sDim" value="${s.sched.dimStart}"></div>
+          <div class="field"><label for="sFade">Fade-out length</label>
+            <div class="row"><input type="range" id="sFade" min="15" max="120" step="5" value="${s.sched.fade}"><span class="val" id="sFadeV">${s.sched.fade} min</span></div></div>
+        </div>
+        <div class="summary" id="sSum"></div>
+        <div style="display:grid;gap:4px">
+          <div class="tl" id="tl"></div>
+          <div class="ticks"><span>4 PM</span><span>6 PM</span><span>8 PM</span><span>10 PM</span><span>12 AM</span><span>2 AM</span></div>
+        </div>
+        <div class="field"><label for="scrub">Preview tonight: drag to see the sign at any time</label>
+          <input type="range" id="scrub" min="960" max="1560" step="5" value="${scrub??1320}">
+          <div class="row" style="justify-content:space-between"><span class="mono" id="scrubV">Drag the slider</span>
+            <span class="row"><button class="btn" id="scrubReset">Back to live</button><button class="btn primary" id="runFade" ${dis}>Run fade now (10 s demo)</button></span></div></div>
+      </div>
+      <p class="muted" id="sOffNote" ${s.sched.enabled?"hidden":""} style="margin:0;font-size:14px">Schedule is off. The sign stays as set until someone changes it, or a smart plug cuts power.</p>
+    </div>
+
+    <div class="sec">
+      <h3>Connection</h3>
+      <div class="conn">${connHTML(s,can)}</div>
+    </div>
+
+    ${manageHTML(s,can)}
+    ${helpHTML(s,can)}`;
+  bindDetail(); syncDetail(); drawQR(s);
+}
+
+function manageHTML(s,can){
+  if(!can) return `<div class="sec"><h3>Access</h3>
+    <p style="margin:0;font-size:14px">Shared with you by <b>${esc(who(s.owner))}</b>. You can control it, but only the owner can rename, share or remove it.</p>
+    <button class="btn" id="leaveBtn" style="justify-self:start">Leave this sign</button></div>`;
+  return `<div class="sec"><h3>Manage</h3>
+    <div class="row" style="align-items:flex-end">
+      <div class="field" style="flex:1;min-width:180px"><label for="mName">Sign name</label><input type="text" id="mName" value="${esc(s.name)}" maxlength="48"></div>
+      <button class="btn" id="mSave">Rename</button></div>
+    ${isMaster()?`<div class="row" style="align-items:flex-end">
+      <div class="field" style="flex:1;min-width:180px"><label for="mOwner">Owner</label><select id="mOwner">${ACCOUNTS.map(a=>`<option value="${a.id}" ${a.id===s.owner?"selected":""}>${esc(a.name)} (${a.kind})</option>`).join("")}</select></div>
+      <button class="btn" id="mXfer">Transfer</button></div>`:""}
+    <div class="field"><span class="lbl">Shared with</span>
+      <div class="people">${s.shared.length?s.shared.map(p=>`<span class="person">${esc(who(p))}<button type="button" aria-label="Remove ${esc(who(p))}'s access" data-unshare="${esc(p)}">Remove</button></span>`).join(""):`<span class="muted" style="font-size:13px">Not shared with anyone.</span>`}</div></div>
+    <form class="row" id="shareForm" style="align-items:flex-end" novalidate>
+      <div class="field" style="flex:1;min-width:180px"><label for="mEmail">Share with (email)</label><input type="email" id="mEmail" placeholder="name@example.com"></div>
+      <button class="btn" type="submit">Share</button></form>
+    <span class="err" id="mErr" role="alert" hidden></span>
+    <div class="field"><span class="lbl">Sign password</span>
+      <div class="row"><span class="mono" id="pwV">${showPw?esc(s.pass):"••••••••••"}</span>
+        <button class="btn" type="button" id="pwShow" style="padding:4px 10px;font-size:13px">${showPw?"Hide":"Show"}</button>
+        <button class="btn" type="button" id="pwReset" style="padding:4px 10px;font-size:13px">Reset password</button></div>
+      <span class="muted" style="font-size:12.5px">Locks the sign's setup hotspot and settings page. Resetting kicks anyone connected to it directly and changes the setup QR.</span>
+      <div id="pwConfirm"></div></div>
+    <div id="rmWrap"><button class="btn danger" id="rmBtn">Remove sign</button></div></div>`;
+}
+function connHTML(s,can=true){
+  if(s.link==="zigbee") return `<dl class="kv"><dt>Link</dt><dd>Zigbee, paired to Home Assistant (Zigbee2MQTT)</dd>
+    <dt>Firmware</dt><dd>Zigbee build on ESP32-C6</dd><dt>Re-pair</dt><dd>Power-cycle the sign 3 times, then permit join in Home Assistant</dd></dl>
+    <div class="qrbox muted">No setup QR on Zigbee builds</div>`;
+  const rows = s.link==="hotspot"
+    ? `<dt>Mode</dt><dd>Running its own hotspot (no venue Wi-Fi)</dd><dt>Hotspot</dt><dd class="mono">${s.ap}</dd><dt>Control page</dt><dd class="mono">http://4.3.2.1</dd>`
+    : `<dt>Network</dt><dd>${s.ssid}</dd><dt>Status</dt><dd>${s.online?`<span style="color:var(--good)">Connected</span> · signal ${s.rssi} dBm`:`<span style="color:var(--bad)">Not seen for 2 h</span> · check power or Wi-Fi`}</dd>
+       <dt>Address</dt><dd class="mono">${s.ip}</dd><dt>Setup hotspot</dt><dd class="mono">${s.ap}</dd>`;
+  if(!can) return `<div style="display:grid;gap:8px;min-width:0"><dl class="kv">${rows}</dl><span class="muted" style="font-size:13px">Only the owner can change Wi-Fi or see the setup code.</span></div>`;
+  return `<div style="display:grid;gap:12px;min-width:0"><dl class="kv">${rows}</dl>
+    <button class="btn" id="wifiBtn" style="justify-self:start">Change Wi-Fi network</button>
+    <form class="wifiform" id="wifiForm" hidden>
+      <div class="field"><label for="wSsid">Network</label><select id="wSsid"><option>SJSU-IoT</option><option>SME-Club-Booth</option><option>Home-WiFi</option></select></div>
+      <div class="field"><label for="wPass">Password</label><input type="password" id="wPass" placeholder="Leave blank if the network is open"></div>
+      <div class="row"><button class="btn primary" type="submit">Connect sign</button><button class="btn" type="button" id="wCancel">Cancel</button></div>
+    </form></div>
+    <div class="qrbox"><div class="qr" id="qr"></div><span>Setup sticker: scan to join<br><span class="mono">${s.ap}</span></span>
+      <button class="btn" id="copyQR" style="font-size:12.5px;padding:4px 10px">Copy Wi-Fi code</button></div>`;
+}
+const qrText = (s) => `WIFI:T:WPA;S:${s.ap};P:${s.pass};;`;
+function drawQR(s){
+  const el=$("qr"); if(!el) return;
+  try{ new QRCode(el,{text:qrText(s),width:120,height:120,colorDark:"#0e1a33",colorLight:"#ffffff"}); }
+  catch(e){ el.innerHTML=`<span class="mono" style="color:#0e1a33;font-size:10px;padding:6px">${qrText(s)}</span>`; }
+}
+
+function bindDetail(){
+  const s=get(sel);
+  $("dPower").onclick=()=>{ s._fade=null; s.on=!s.on; renderFleet(); syncDetail(); };
+  $("dBri").oninput=(e)=>{ s.bri=+e.target.value; s._fade=null; $("dBriV").textContent=s.bri+"%"; renderFleet(); syncDetail(); };
+  $("dEff").onclick=(e)=>{ const b=e.target.closest("[data-eff]"); if(!b) return; s.effect=b.dataset.eff;
+    $("dEff").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b)); renderFleet(); syncDetail(); };
+  document.querySelectorAll("[data-zone]").forEach(inp=>inp.oninput=()=>{ s.zones[inp.dataset.zone]=inp.value; renderFleet(); syncDetail(); });
+  document.querySelectorAll("[data-pre]").forEach(b=>b.onclick=()=>{ s.zones={...PRESETS[+b.dataset.pre].z};
+    ["white","blue","gold"].forEach(k=>$("z-"+k).value=s.zones[k]); renderFleet(); syncDetail(); });
+  $("sEn").onclick=()=>{ s.sched.enabled=!s.sched.enabled; $("sEn").setAttribute("aria-checked",s.sched.enabled);
+    $("sBody").hidden=!s.sched.enabled; $("sOffNote").hidden=s.sched.enabled; scrub=null; syncDetail(); };
+  $("sMode").onclick=(e)=>{ const b=e.target.closest("[data-mode]"); if(!b) return; s.sched.onMode=b.dataset.mode;
+    $("sMode").querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+    $("sSunWrap").hidden=s.sched.onMode!=="sunset"; $("sTimeWrap").hidden=s.sched.onMode!=="time"; syncDetail(); };
+  $("sOff").onchange=(e)=>{ s.sched.offset=+e.target.value; syncDetail(); };
+  $("sOn").onchange=(e)=>{ if(e.target.value){ s.sched.onTime=e.target.value; syncDetail(); } };
+  $("sDim").onchange=(e)=>{ if(e.target.value){ s.sched.dimStart=e.target.value; syncDetail(); } };
+  $("sFade").oninput=(e)=>{ s.sched.fade=+e.target.value; $("sFadeV").textContent=s.sched.fade+" min"; syncDetail(); };
+  $("scrub").oninput=(e)=>{ scrub=+e.target.value; syncDetail(); };
+  $("scrubReset").onclick=()=>{ scrub=null; syncDetail(); };
+  $("runFade").onclick=()=>runFade(s);
+  const lv=$("leaveBtn");
+  if(lv) lv.onclick=()=>{ const nm=s.name; s.shared=s.shared.filter(x=>x!==me); renderFleet(); renderDetail(); toast("You left "+nm); };
+  if($("mName")){
+    const mErr=(m)=>{ $("mErr").textContent=m; $("mErr").hidden=false; };
+    $("mName").oninput=$("mEmail").oninput=()=>{ $("mErr").hidden=true; };
+    $("mSave").onclick=()=>{ const v=$("mName").value.trim();
+      if(!v) return mErr("Enter a name for the sign.");
+      if(signs.some(x=>x!==s&&x.owner===s.owner&&x.name.toLowerCase()===v.toLowerCase())) return mErr("This owner already has a sign with that name.");
+      s.name=v; renderFleet(); renderDetail(); toast("Renamed to "+v); };
+    if($("mXfer")) $("mXfer").onclick=()=>{ const o=$("mOwner").value;
+      if(o===s.owner) return mErr("That account already owns this sign.");
+      s.owner=o; s.shared=s.shared.filter(x=>x!==o); renderFleet(); renderDetail(); toast("Transferred to "+who(o)); };
+    document.querySelectorAll("[data-unshare]").forEach(b=>b.onclick=()=>{ const id=b.dataset.unshare;
+      s.shared=s.shared.filter(x=>x!==id); renderFleet(); renderDetail(); toast("Removed "+who(id)+"'s access"); });
+    $("shareForm").onsubmit=(e)=>{ e.preventDefault(); const v=$("mEmail").value.trim().toLowerCase();
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return mErr("Enter a valid email address.");
+      const id=(ACCOUNTS.find(a=>a.email===v)||{}).id||v;
+      if(id===s.owner) return mErr("That account already owns this sign.");
+      if(s.shared.includes(id)) return mErr("It's already shared with that person.");
+      s.shared.push(id); renderFleet(); renderDetail(); toast("Shared with "+who(id)); };
+    $("rmBtn").onclick=()=>{
+      const after = s.link==="zigbee" ? "Also remove it from Zigbee2MQTT in Home Assistant." :
+        `The sign resets to its setup hotspot (<span class="mono">${s.ap}</span>) so someone can claim it again.`;
+      $("rmWrap").innerHTML=`<div class="confirm"><span>Remove <b>${esc(s.name)}</b>? It disappears for the owner and everyone it's shared with. ${after}</span>
+        <div class="row"><button class="btn danger" id="rmYes">Remove</button><button class="btn" id="rmNo">Keep it</button></div></div>`;
+      $("rmYes").onclick=()=>{ const nm=s.name; signs.splice(signs.indexOf(s),1); sel=null; scrub=null;
+        renderFleet(); renderDetail(); toast("Removed "+nm); };
+      $("rmNo").onclick=()=>{ $("rmWrap").innerHTML=`<button class="btn danger" id="rmBtn">Remove sign</button>`; bindDetail(); };
+    };
+  }
+  if($("pwShow")){
+    $("pwShow").onclick=()=>{ showPw=!showPw; $("pwV").textContent=showPw?s.pass:"••••••••••"; $("pwShow").textContent=showPw?"Hide":"Show"; };
+    $("pwReset").onclick=()=>{
+      $("pwConfirm").innerHTML=`<div class="confirm"><span>Reset the password for <b>${esc(s.name)}</b>? The old setup QR stops working, so print a new sticker from Connection.</span>
+        ${s.shared.length?`<label class="row" style="font-size:14px;gap:8px"><input type="checkbox" id="pwBoot" checked> Also remove everyone it's shared with (${s.shared.length})</label>`:""}
+        <div class="row"><button class="btn danger" id="pwYes">Reset password</button><button class="btn" id="pwNo">Cancel</button></div></div>`;
+      $("pwNo").onclick=()=>{ $("pwConfirm").innerHTML=""; };
+      $("pwYes").onclick=()=>{ const boot=$("pwBoot")&&$("pwBoot").checked, n=s.shared.length;
+        s.pass="spartan-"+Math.random().toString(36).slice(2,6); if(boot) s.shared=[]; showPw=true;
+        renderFleet(); renderDetail(); toast("Password reset"+(boot?` and ${n} ${n>1?"people":"person"} removed`:"")); };
+    };
+  }
+  $("repBtn").onclick=()=>{
+    $("repWrap").innerHTML=`<form class="wifiform" id="repForm" novalidate>
+      <div class="field"><label for="rType">What's wrong?</label><select id="rType">${ISSUES.map(i=>`<option>${i}</option>`).join("")}</select></div>
+      <div class="field"><label for="rText">Details</label><textarea id="rText" rows="3" placeholder="What happened, and when?"></textarea></div>
+      <span class="err" id="rErr" role="alert" hidden></span>
+      <div class="row"><button class="btn primary" type="submit">Send report</button><button class="btn" type="button" id="rCancel">Cancel</button></div></form>`;
+    $("rText").focus();
+    $("rText").oninput=()=>{ $("rErr").hidden=true; };
+    $("rCancel").onclick=()=>{ renderDetail(); };
+    $("repForm").onsubmit=(e)=>{ e.preventDefault(); const txt=$("rText").value.trim();
+      if(txt.length<10){ $("rErr").textContent="Add a few words so the team can help (at least 10 characters)."; $("rErr").hidden=false; return; }
+      const t={id:Math.max(1040,...TICKETS.map(x=>x.id))+1,sign:s.id,by:me,type:$("rType").value,text:txt,at:Date.now(),open:true};
+      TICKETS.push(t); lastSent=t; renderFleet(); renderDetail(); toast(`Ticket #${t.id} sent to the support Discord`); };
+  };
+  const wb=$("wifiBtn");
+  if(wb){
+    wb.onclick=()=>{ $("wifiForm").hidden=false; wb.hidden=true; };
+    $("wCancel").onclick=()=>{ $("wifiForm").hidden=true; wb.hidden=false; };
+    $("wifiForm").onsubmit=(e)=>{ e.preventDefault(); const net=$("wSsid").value; toast("Sending to sign…");
+      setTimeout(()=>{ s.link="wifi"; s.ssid=net; s.online=true; s.rssi=-60; s.ip=s.ip&&s.ip!=="—"&&s.ip!=="4.3.2.1"?s.ip:"10.12.6.48";
+        renderFleet(); renderDetail(); toast("Connected to "+net); }, 1200); };
+    $("copyQR").onclick=async()=>{ try{ await navigator.clipboard.writeText(qrText(s)); toast("Wi-Fi code copied"); }
+      catch(e){ toast(qrText(s)); } };
+  }
+}
+
+function syncDetail(){
+  const s=get(sel); if(!s||!$("dBadge")) return;
+  const scheduled = scrub!=null && s.sched.enabled;
+  const bri = scheduled ? (s.online ? schedBri(s, scrub) : 0) : liveBri(s);
+  $("dBadge").innerHTML = badge(s, bri);
+  $("dCap").textContent = scheduled ? `${fmt(scrub)} · ${bri}%` : `live · ${bri}%`;
+  $("dPower").setAttribute("aria-checked", s.on&&s.online);
+  const [c,t]=status(s); $("dPill").className="pill "+c; $("dPill").textContent=t;
+  $("dBri").value=s.bri; $("dBriV").textContent=s.bri+"%";
+  if(!s.sched.enabled) return;
+  const p=plan(s), start=960, span=600, pct=(m)=>Math.max(0,Math.min(100,(m-start)/span*100));
+  const onWhat = s.sched.onMode==="sunset" ? `sunset${s.sched.offset? " "+(s.sched.offset>0?"+":"")+s.sched.offset+" min":""}, ${fmt(SUNSET)} today` : "a set time";
+  $("sSum").innerHTML = p.dim<=p.on
+    ? `Dimming starts before the sign turns on. Set <strong>Start dimming</strong> later than <strong>${fmt(p.on)}</strong>.`
+    : `On at <strong>${fmt(p.on)}</strong> (${onWhat}), full ${s.bri}% until <strong>${fmt(p.dim)}</strong>, then fades to off by <strong>${fmt(p.off)}</strong>.`;
+  const now=new Date(), nowM=eve(now.getHours()*60+now.getMinutes());
+  $("tl").innerHTML = `<div class="seg-on" style="left:${pct(p.on)}%;width:${Math.max(0,pct(p.dim)-pct(p.on))}%"></div>
+    <div class="seg-fade" style="left:${pct(p.dim)}%;width:${Math.max(0,pct(p.off)-pct(p.dim))}%"></div>
+    <div class="ss" style="left:${pct(eve(SUNSET))}%" title="Sunset"></div>
+    ${scrub!=null?`<div class="now" style="left:${pct(scrub)}%"></div>`:(nowM>=start&&nowM<=start+span?`<div class="now" style="left:${pct(nowM)}%"></div>`:"")}`;
+  $("scrubV").textContent = scrub!=null ? `Showing ${fmt(scrub)} → ${s.online?schedBri(s,scrub)+"%":"sign offline"}` : "Drag the slider";
+}
+
+function runFade(s){
+  if(!s.online) return; s.on=true; scrub=null;
+  const from=s.bri, t0=performance.now(), dur=10000;
+  toast(`Fading out (real fade is ${s.sched.fade} min)`);
+  (function step(t){
+    const k=Math.min(1,(t-t0)/dur); s._fade=Math.round(from*(1-k));
+    renderFleet(); if(s.id===sel) syncDetail();
+    if(k<1) requestAnimationFrame(step); else { s._fade=null; s.on=false; renderFleet(); if(s.id===sel) syncDetail(); toast("Faded out, sign is off"); }
+  })(t0);
+}
+
+/* ---------- misc ---------- */
+let tt; function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(tt); tt=setTimeout(()=>t.classList.remove("show"),2200); }
+function tick(){ const d=new Date(); $("clock").textContent=d.toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}); }
+tick(); setInterval(tick, 10000);
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+setInterval(()=>{ if(reduce) return; if(!signs.some(s=>s.effect==="gameday"&&s.on&&s.online)) return;
+  phase++; renderFleet(); syncDetail(); }, 900);
+
+renderFleet(); renderDetail();
+</script>
+
+</html>
