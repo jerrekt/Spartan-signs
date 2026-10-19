@@ -11,19 +11,19 @@
 <style>
 /* Layout: test bench. Control strip on top, numbered build cards in a grid, comparison table below. */
 :root{
-  --bg:#eef1f7; --surface:#ffffff; --sunk:#e4e9f2; --fg:#101a30; --muted:#5b6782; --line:#d5dcea;
-  --blue:#0055a2; --gold:#c98a0e; --on-accent:#ffffff;
+  --bg:#ecebe8; --surface:#fbfbfa; --sunk:#e2e0dc; --fg:#1b1b1a; --muted:#66645f; --line:#d6d4cf;
+  --blue:#1b1b1a; --gold:#d9a01a; --on-accent:#fbfbfa;
   --good:#1f8a4c; --warn:#a8650a; --bad:#b33a3a;
   --display:"Barlow Condensed","Arial Narrow",sans-serif;
   --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
   --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0a0f1c; --surface:#121a2c; --sunk:#0d1424; --fg:#e6ebf6; --muted:#8e99b4; --line:#24304a;
-  --blue:#4b8ee0; --gold:#f0b83a; --on-accent:#0a0f1c; --good:#4cc283; --warn:#e6a23a; --bad:#e36a6a; color-scheme:dark}}
+  --bg:#141414; --surface:#1f1f1e; --sunk:#191918; --fg:#ededeb; --muted:#9b9994; --line:#2f2f2d;
+  --blue:#e5a823; --gold:#e5a823; --on-accent:#141414; --good:#4cc283; --warn:#e6a23a; --bad:#e36a6a; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0a0f1c; --surface:#121a2c; --sunk:#0d1424; --fg:#e6ebf6; --muted:#8e99b4; --line:#24304a;
-  --blue:#4b8ee0; --gold:#f0b83a; --on-accent:#0a0f1c; --good:#4cc283; --warn:#e6a23a; --bad:#e36a6a; color-scheme:dark}
+  --bg:#141414; --surface:#1f1f1e; --sunk:#191918; --fg:#ededeb; --muted:#9b9994; --line:#2f2f2d;
+  --blue:#e5a823; --gold:#e5a823; --on-accent:#141414; --good:#4cc283; --warn:#e6a23a; --bad:#e36a6a; color-scheme:dark}
 
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--body);
