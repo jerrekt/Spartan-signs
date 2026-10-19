@@ -9,7 +9,7 @@ Web front end for the SME club's Spartan logo LED signs.
 | `nginx/sign-sites.conf` | nginx server block |
 | `deploy.sh` | Pull + reload on the server |
 
-Live at `spartan-signs.adsuaracloud.com` (control) and `/lab` (build options), served from an nginx LXC on Kratos (CT 310, 10.0.0.70) through the Cloudflare tunnel.
+Live at `spartan-signs.adsuaracloud.com` (control) and `/lab` (build options), served from an nginx LXC on Kratos (CT 310, 10.0.0.71) through the Cloudflare tunnel.
 
 Both pages are clickable demos: no backend yet, so changes reset on reload.
 
