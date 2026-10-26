@@ -81,9 +81,16 @@ tbody tr:last-child td{border-bottom:none}
 td.n{font-family:var(--display);font-size:16px;color:var(--muted)}
 tr.rec td{background:color-mix(in srgb,var(--gold) 9%,transparent)}
 .foot{font-size:13px;color:var(--muted);max-width:80ch}
+/* site menu */
+.sitenav{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.sitenav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:14px;padding:5px 11px;border-radius:8px;border:1px solid transparent}
+.sitenav a:hover{color:var(--fg);border-color:var(--line)}
+.sitenav a[aria-current="page"]{color:var(--fg);background:var(--sunk);border-color:var(--line)}
+.rightgrp{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
 </style>
 
 <div class="wrap">
+  <nav class="sitenav" aria-label="Site"><a href="../">Control</a><a href="./" aria-current="page">Lab</a><a href="../about/">About</a></nav>
   <header class="intro">
     <span class="eyebrow">SME · LED sign · build options</span>
     <h1>LED Sign Build Options</h1>

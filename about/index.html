@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>About Spartan Signs</title>
+<meta name="description" content="Spartan Signs: a smart LED sign of the SJSU Spartan helmet, built by SME students. What it is, how it works and how it is connected.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#ecebe8; --surface:#fbfbfa; --sunk:#e2e0dc; --fg:#1b1b1a; --muted:#66645f; --line:#d6d4cf;
+  --blue:#1b1b1a; --gold:#d9a01a; --good:#1f8a4c;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141414; --surface:#1f1f1e; --sunk:#191918; --fg:#ededeb; --muted:#9b9994; --line:#2f2f2d;
+  --blue:#e5a823; --gold:#e5a823; --good:#4cc283; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141414; --surface:#1f1f1e; --sunk:#191918; --fg:#ededeb; --muted:#9b9994; --line:#2f2f2d;
+  --blue:#e5a823; --gold:#e5a823; --good:#4cc283; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.55 var(--body);
+  padding:20px max(16px,env(safe-area-inset-right,0px)) 40px max(16px,env(safe-area-inset-left,0px))}
+.wrap{max-width:1040px;margin:0 auto;display:grid;gap:22px}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:.01em;margin:0;text-wrap:balance}
+h1{font-size:clamp(32px,6vw,46px);line-height:1.05}
+h2{font-size:26px}
+h3{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+p{margin:0}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-size:12.5px}
+a{color:var(--fg)}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.top .name{font-family:var(--display);font-size:22px;font-weight:700}
+.top .name small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);font-weight:500}
+.sitenav{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.sitenav a{color:var(--muted);text-decoration:none;font-weight:600;font-size:14px;padding:5px 11px;border-radius:8px;border:1px solid transparent}
+.sitenav a:hover{color:var(--fg);border-color:var(--line)}
+.sitenav a[aria-current="page"]{color:var(--fg);background:var(--sunk);border-color:var(--line)}
+
+.hero{display:grid;gap:10px;padding:14px 0 6px;max-width:68ch}
+.hero .lead{font-size:18px;color:var(--muted)}
+.badge{display:inline-block;width:fit-content;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.steps{display:grid;gap:12px}
+@media (min-width:760px){.steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.steps .card{display:grid;gap:8px;align-content:start}
+.steps .card p{color:var(--muted)}
+.num{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--gold);color:#1b1404;font-weight:700;font-size:14px;margin-right:8px;font-family:var(--body);letter-spacing:0}
+.steps h3{display:flex;align-items:center}
+
+.diagram{display:grid;gap:12px}
+.diagram svg{width:100%;height:auto;display:block}
+.dg-box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.dg-box.hl{stroke:var(--gold);stroke-width:2}
+.dg-t{fill:var(--fg);font:600 14px var(--body)}
+.dg-s{fill:var(--muted);font:12px var(--body)}
+.dg-l{stroke:var(--muted);stroke-width:1.6;fill:none}
+.dg-l.plan{stroke-dasharray:5 5}
+.dg-lab{fill:var(--muted);font:11px var(--mono)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:26px;border-top:2px solid var(--muted);vertical-align:middle;margin-right:6px}
+.legend i.plan{border-top-style:dashed}
+
+dl.kv{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 18px;margin:0}
+dl.kv dt{color:var(--muted);font-weight:600}
+dl.kv dd{margin:0;overflow-wrap:anywhere}
+
+.team{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:10px}
+@media (min-width:720px){.team{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.team li{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface)}
+.team .who{font-weight:700;display:block}
+.team .role{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.go{display:flex;gap:10px;flex-wrap:wrap}
+.go a{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:600;text-decoration:none}
+.go a:hover{border-color:var(--blue)}
+footer{border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font-size:13px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="name"><small>SME · SJSU</small>Spartan Signs</div>
+    <nav class="sitenav" aria-label="Site"><a href="../">Control</a><a href="../lab/">Lab</a><a href="./" aria-current="page">About</a></nav>
+  </header>
+
+  <section class="hero">
+    <span class="badge">About this project</span>
+    <h1>A smart LED sign of the SJSU Spartan.</h1>
+    <p class="lead">Students in the Society of Manufacturing Engineers at San José State are building an LED sign of the Spartan helmet, plus the production process to make more of them. You switch a sign on and off, set its colors and schedule it from this site.</p>
+  </section>
+
+  <section>
+    <h2 style="margin-bottom:12px">How it works</h2>
+    <div class="steps">
+      <div class="card"><h3><span class="num">1</span>The sign</h3>
+        <p>The Spartan helmet logo lit by LEDs in three color zones: white, blue and gold. An ESP32-C6 inside each sign runs WLED, an open-source LED controller. It takes its commands from the control site.</p></div>
+      <div class="card"><h3><span class="num">2</span>The control site</h3>
+        <p>Sign in, then add a sign with the code on its sticker. Turn it on or off, set brightness, effects and zone colors, schedule a nightly on-and-fade-out, share it with other people, or open a support ticket. Each control maps to a WLED setting.</p></div>
+      <div class="card"><h3><span class="num">3</span>The accounts</h3>
+        <p>Anyone can sign in with Google or an email link, not only @sjsu.edu. There is one master user. Owners sit one level below (a person, a department or a club), and each owner can share their sign with others and remove them again.</p></div>
+    </div>
+  </section>
+
+  <section class="card diagram">
+    <h2>How it is connected</h2>
+    <svg viewBox="0 0 900 330" role="img" aria-label="Diagram. A browser reaches the Spartan Signs site over the internet through a secure tunnel to a web container on the Kratos home server. The container pulls its code from GitHub every minute. Planned: the site sends commands to each sign's ESP32-C6 over Wi-Fi or Zigbee.">
+      <rect class="dg-box" x="20" y="30" width="170" height="70" rx="10"/>
+      <text class="dg-t" x="105" y="62" text-anchor="middle">Phone or laptop</text>
+      <text class="dg-s" x="105" y="82" text-anchor="middle">Owner or shared user</text>
+
+      <rect class="dg-box hl" x="280" y="20" width="340" height="150" rx="12"/>
+      <text class="dg-t" x="450" y="46" text-anchor="middle">Kratos (home server)</text>
+      <rect class="dg-box" x="305" y="62" width="290" height="86" rx="10"/>
+      <text class="dg-t" x="450" y="90" text-anchor="middle">Web container</text>
+      <text class="dg-s" x="450" y="110" text-anchor="middle">nginx serves Control, Lab and About</text>
+      <text class="dg-s" x="450" y="128" text-anchor="middle">Demo for now, no backend yet</text>
+
+      <rect class="dg-box" x="710" y="30" width="170" height="70" rx="10"/>
+      <text class="dg-t" x="795" y="62" text-anchor="middle">GitHub</text>
+      <text class="dg-s" x="795" y="82" text-anchor="middle">jerrekt/Spartan-signs</text>
+
+      <rect class="dg-box" x="230" y="240" width="440" height="70" rx="10"/>
+      <text class="dg-t" x="450" y="268" text-anchor="middle">Spartan sign (ESP32-C6 running WLED)</text>
+      <text class="dg-s" x="450" y="288" text-anchor="middle">White, blue and gold LED zones</text>
+
+      <line class="dg-l" x1="190" y1="65" x2="280" y2="65"/>
+      <text class="dg-lab" x="235" y="56" text-anchor="middle">https</text>
+      <line class="dg-l" x1="710" y1="65" x2="620" y2="65"/>
+      <text class="dg-lab" x="665" y="56" text-anchor="middle">pulled</text>
+      <text class="dg-lab" x="665" y="84" text-anchor="middle">every min</text>
+      <line class="dg-l plan" x1="450" y1="170" x2="450" y2="240"/>
+      <text class="dg-lab" x="462" y="210">Wi-Fi or Zigbee (planned)</text>
+    </svg>
+    <div class="legend"><span><i></i>Working today</span><span><i class="plan"></i>Planned, not built yet</span></div>
+    <dl class="kv">
+      <dt>Hosting</dt><dd>A container on Kratos, our home server. The public address reaches it through a secure tunnel, so the server is not open to the internet directly.</dd>
+      <dt>Updates</dt><dd>The code lives on GitHub. The container checks every minute and deploys anything new, so a change that is merged goes live within about a minute.</dd>
+      <dt>Signs</dt><dd>Each sign joins Wi-Fi, or Zigbee through a hub such as Home Assistant, and takes its commands from the site. Hardware control is not built yet.</dd>
+      <dt>Time</dt><dd>The clock syncs to pool.ntp.org in Pacific time, and schedules can follow sunset.</dd>
+      <dt>Help</dt><dd>Support tickets notify the project lead on Discord, and each sign can remove a user or reset its password.</dd>
+    </dl>
+  </section>
+
+  <section class="card">
+    <h2>Status</h2>
+    <p class="muted" style="margin-top:8px">Prototyping. The Control and Lab pages are clickable demos with example signs and nothing talks to real hardware yet. Lab compares ten simulated build options for the face, wall and LEDs, so the team can choose a design before building.</p>
+    <div class="go" style="margin-top:12px"><a href="../">Open Control</a><a href="../lab/">Open Lab</a><a href="https://github.com/jerrekt/Spartan-signs" target="_blank" rel="noopener">Code on GitHub ↗</a></div>
+  </section>
+
+  <section>
+    <h2>Team</h2>
+    <ul class="team">
+      <li><a class="who" href="https://bja.adsuaracloud.com" target="_blank" rel="noopener">Branden Adsuara</a><span class="role">Technical lead, electrical · Kratos server · website</span></li>
+      <li><span class="who">SME at SJSU</span><span class="role">Society of Manufacturing Engineers chapter. The club makes the signs.</span></li>
+    </ul>
+    <p class="muted" style="margin-top:12px;font-size:14px">The Spartan logo is used with SJSU licensing approval, arranged through the club's advisor.</p>
+  </section>
+
+  <footer>Spartan Signs · SME at San José State University</footer>
+</div>
+</body>
+</html>

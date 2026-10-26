@@ -6,10 +6,11 @@ Web front end for the SME club's Spartan logo LED signs.
 |---|---|
 | `signs/index.html` | Control site: sign in, add/claim signs, power, colors, schedule, sharing, support tickets |
 | `lab/index.html` | Build options: simulated face/wall/LED combos for the sign |
+| `about/index.html` | About page: what the project is, how it works, how it is connected, team |
 | `nginx/sign-sites.conf` | nginx server block |
 | `deploy.sh` | Pull + reload on the server |
 
-Live at `spartan-signs.adsuaracloud.com` (control) and `/lab` (build options), served from an nginx LXC on Kratos (CT 310, 10.0.0.71) through the Cloudflare tunnel.
+Live at `spartan-signs.adsuaracloud.com` (control), `/lab` (build options) and `/about` (about), served from an nginx LXC on Kratos (CT 310, 10.0.0.71) through the Cloudflare tunnel.
 
 Both pages are clickable demos: no backend yet, so changes reset on reload.
 
@@ -45,3 +46,7 @@ systemctl enable --now spartan-deploy.timer
 
 Manual deploy: `/var/www/spartan-signs/deploy.sh`
 Deploy log: `journalctl -u spartan-deploy --no-pager | tail`
+
+## Top menu
+
+Every page has the same menu: Control, Lab, About. On the control page it sits next to Sign out. Links are relative, so they work under any prefix. A new page needs a folder here, a `location` block in `nginx/sign-sites.conf`, and a link in each page's menu.
