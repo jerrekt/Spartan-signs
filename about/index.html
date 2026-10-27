@@ -78,6 +78,12 @@ dl.kv dd{margin:0;overflow-wrap:anywhere}
 .team li{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface)}
 .team .who{font-weight:700;display:block}
 .team .role{display:block;font-size:14px;color:var(--muted);margin-top:2px}
+.teams{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:10px}
+@media (min-width:640px){.teams{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.teams li{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--surface);display:grid;gap:2px;align-content:start}
+.teams .tn{font-weight:700}
+.teams .tw{font-size:14px;color:var(--muted)}
+.teams li.lead{border-color:var(--gold)}
 .go{display:flex;gap:10px;flex-wrap:wrap}
 .go a{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:600;text-decoration:none}
 .go a:hover{border-color:var(--blue)}
@@ -156,7 +162,19 @@ footer{border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font
   </section>
 
   <section>
-    <h2>Team</h2>
+    <h2>Teams</h2>
+    <p class="muted" style="margin-top:8px;max-width:68ch">The project is split into five teams so each part has an owner.</p>
+    <ul class="teams">
+      <li><span class="tn">Design Team</span></li>
+      <li class="lead"><span class="tn">Electronics Team</span><span class="tw">The ESP32-C6 and the LED electronics. Lead: Branden Adsuara</span></li>
+      <li><span class="tn">Robotics Team</span><span class="tw">Automating how the signs are made</span></li>
+      <li><span class="tn">Business Team</span></li>
+      <li><span class="tn">Research &amp; Development sub-team</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>People</h2>
     <ul class="team">
       <li><a class="who" href="https://bja.adsuaracloud.com" target="_blank" rel="noopener">Branden Adsuara</a><span class="role">Technical lead, electrical · Kratos server · website</span><span class="role">Under <a href="https://bja.adsuaracloud.com" target="_blank" rel="noopener">Jerman Engineering</a></span></li>
       <li><span class="who">SME at SJSU</span><span class="role">Society of Manufacturing Engineers chapter. The club makes the signs.</span></li>
