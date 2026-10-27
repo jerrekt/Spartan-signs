@@ -84,6 +84,10 @@ dl.kv dd{margin:0;overflow-wrap:anywhere}
 .teams .tn{font-weight:700}
 .teams .tw{font-size:14px;color:var(--muted)}
 .teams li.lead{border-color:var(--gold)}
+.officers{background:var(--surface);border:1px solid var(--gold);border-radius:12px;padding:16px;box-shadow:inset 4px 0 0 var(--gold)}
+.officer-grid li{background:var(--sunk);border-color:var(--line)}
+.officer-grid .who{font-size:16px}
+.officer-grid .role{color:var(--fg);font-weight:600;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}
 .go{display:flex;gap:10px;flex-wrap:wrap}
 .go a{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 14px;font-weight:600;text-decoration:none}
 .go a:hover{border-color:var(--blue)}
@@ -173,20 +177,24 @@ footer{border-top:1px solid var(--line);padding-top:16px;color:var(--muted);font
     </ul>
   </section>
 
-  <section>
-    <h2>People</h2>
-    <ul class="team">
-      <li><a class="who" href="https://bja.adsuaracloud.com" target="_blank" rel="noopener">Branden Adsuara</a><span class="role">Technical lead, electrical · Kratos server · website</span><span class="role">Under <a href="https://bja.adsuaracloud.com" target="_blank" rel="noopener">Jerman Engineering</a></span></li>
-      <li><span class="who">SME at SJSU</span><span class="role">Society of Manufacturing Engineers chapter. The club makes the signs.</span></li>
-    </ul>
-    <h3 style="margin-top:20px">SME officers</h3>
-    <ul class="team">
+  <section class="officers">
+    <h2>SME officers</h2>
+    <p class="muted" style="margin-top:8px;max-width:68ch">The officers of the SJSU chapter of the Society of Manufacturing Engineers, which makes the signs.</p>
+    <ul class="team officer-grid">
       <li><span class="who">Landen Ross</span><span class="role">President</span></li>
       <li><span class="who">Pedro Alvarez</span><span class="role">Vice President</span></li>
       <li><span class="who">Kevin Nguyen</span><span class="role">Treasurer</span></li>
       <li><span class="who">Robert Reyes</span><span class="role">Secretary</span></li>
       <li><span class="who">Gage Watts</span><span class="role">Social Operations</span></li>
       <li><span class="who">Mahad Jama</span><span class="role">Project Lead</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>People</h2>
+    <ul class="team">
+      <li><a class="who" href="https://bja.adsuaracloud.com" target="_blank" rel="noopener">Branden Adsuara</a><span class="role">Technical lead, electrical · Kratos server · website</span><span class="role">Under <a href="https://bja.adsuaracloud.com" target="_blank" rel="noopener">Jerman Engineering</a></span></li>
+      <li><span class="who">SME at SJSU</span><span class="role">Society of Manufacturing Engineers chapter. The club makes the signs.</span></li>
     </ul>
     <p class="muted" style="margin-top:12px;font-size:14px">The Spartan logo is used with SJSU licensing approval, arranged through the club's advisor.</p>
   </section>
